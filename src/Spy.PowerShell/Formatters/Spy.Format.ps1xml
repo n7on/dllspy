@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <ViewDefinitions>
+
+    <!-- EndpointInfo Table View -->
+    <View>
+      <Name>Spy.Core.Contracts.EndpointInfo</Name>
+      <ViewSelectedBy>
+        <TypeName>Spy.Core.Contracts.EndpointInfo</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Method</Label>
+            <Width>8</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Route</Label>
+            <Width>40</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Controller</Label>
+            <Width>20</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Action</Label>
+            <Width>20</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Auth</Label>
+            <Width>6</Width>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>HttpMethod</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Route</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ControllerName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ActionName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>
+                  if ($_.RequiresAuthorization) { 'Yes' }
+                  elseif ($_.AllowAnonymous) { 'Anon' }
+                  else { 'No' }
+                </ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <!-- EndpointInfo List View -->
+    <View>
+      <Name>Spy.Core.Contracts.EndpointInfo.List</Name>
+      <ViewSelectedBy>
+        <TypeName>Spy.Core.Contracts.EndpointInfo</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem>
+                <Label>HTTP Method</Label>
+                <PropertyName>HttpMethod</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Route</Label>
+                <PropertyName>Route</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Controller</Label>
+                <PropertyName>ControllerName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Action</Label>
+                <PropertyName>ActionName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Requires Auth</Label>
+                <PropertyName>RequiresAuthorization</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Allow Anonymous</Label>
+                <PropertyName>AllowAnonymous</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Roles</Label>
+                <ScriptBlock>($_.Roles -join ', ')</ScriptBlock>
+              </ListItem>
+              <ListItem>
+                <Label>Policies</Label>
+                <ScriptBlock>($_.Policies -join ', ')</ScriptBlock>
+              </ListItem>
+              <ListItem>
+                <Label>Return Type</Label>
+                <PropertyName>ReturnType</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Is Async</Label>
+                <PropertyName>IsAsync</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Parameters</Label>
+                <ScriptBlock>($_.Parameters | ForEach-Object { $_.ToString() }) -join '; '</ScriptBlock>
+              </ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+
+    <!-- SecurityIssue Table View -->
+    <View>
+      <Name>Spy.Core.Contracts.SecurityIssue</Name>
+      <ViewSelectedBy>
+        <TypeName>Spy.Core.Contracts.SecurityIssue</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Severity</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Title</Label>
+            <Width>35</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Endpoint</Label>
+            <Width>35</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Description</Label>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Severity</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Title</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>"$($_.HttpMethod) $($_.EndpointRoute)"</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>Description</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <!-- SecurityIssue List View -->
+    <View>
+      <Name>Spy.Core.Contracts.SecurityIssue.List</Name>
+      <ViewSelectedBy>
+        <TypeName>Spy.Core.Contracts.SecurityIssue</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem>
+                <Label>Severity</Label>
+                <PropertyName>Severity</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Title</Label>
+                <PropertyName>Title</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Endpoint</Label>
+                <ScriptBlock>"$($_.HttpMethod) $($_.EndpointRoute)"</ScriptBlock>
+              </ListItem>
+              <ListItem>
+                <Label>Controller</Label>
+                <PropertyName>ControllerName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Action</Label>
+                <PropertyName>ActionName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Description</Label>
+                <PropertyName>Description</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Recommendation</Label>
+                <PropertyName>Recommendation</PropertyName>
+              </ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+
+    <!-- AssemblyReport List View -->
+    <View>
+      <Name>Spy.Core.Contracts.AssemblyReport</Name>
+      <ViewSelectedBy>
+        <TypeName>Spy.Core.Contracts.AssemblyReport</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem>
+                <Label>Assembly</Label>
+                <PropertyName>AssemblyName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Path</Label>
+                <PropertyName>AssemblyPath</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Scan Time</Label>
+                <PropertyName>ScanTimestamp</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Total Endpoints</Label>
+                <PropertyName>TotalEndpoints</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Total Controllers</Label>
+                <PropertyName>TotalControllers</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Authenticated</Label>
+                <PropertyName>AuthenticatedEndpoints</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Anonymous</Label>
+                <PropertyName>AnonymousEndpoints</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Security Issues</Label>
+                <PropertyName>TotalSecurityIssues</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>High Severity</Label>
+                <PropertyName>HighSeverityIssues</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Medium Severity</Label>
+                <PropertyName>MediumSeverityIssues</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Low Severity</Label>
+                <PropertyName>LowSeverityIssues</PropertyName>
+              </ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+
+  </ViewDefinitions>
+</Configuration>

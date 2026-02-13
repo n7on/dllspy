@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="utf-8"?>
+<helpItems schema="maml"
+  xmlns="http://msh"
+  xmlns:maml="http://schemas.microsoft.com/maml/2004/10"
+  xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10"
+  xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10">
+
+  <!-- ======================================================================
+       Get-SpyEndpoint
+       ====================================================================== -->
+  <command:command>
+    <command:details>
+      <command:name>Get-SpyEndpoint</command:name>
+      <command:verb>Get</command:verb>
+      <command:noun>SpyEndpoint</command:noun>
+      <maml:description>
+        <maml:para>Discovers HTTP endpoints in compiled .NET assemblies using reflection.</maml:para>
+      </maml:description>
+    </command:details>
+
+    <maml:description>
+      <maml:para>Scans one or more .NET assemblies for ASP.NET Core and Web API controllers, extracting all HTTP endpoints with their routes, HTTP methods, authorization requirements, parameters, and return types.</maml:para>
+      <maml:para>The cmdlet detects controllers by inheritance (ControllerBase, Controller, ApiController), by the [ApiController] attribute, or by the naming convention of classes ending in "Controller".</maml:para>
+      <maml:para>Routes are resolved by combining controller-level and action-level [Route] templates, with support for [controller] and [action] tokens.</maml:para>
+    </maml:description>
+
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Get-SpyEndpoint</maml:name>
+        <command:parameter required="true" position="0" pipelineInput="true (ByValue, ByPropertyName)">
+          <maml:name>Path</maml:name>
+          <command:parameterValue required="true">String[]</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false">
+          <maml:name>HttpMethod</maml:name>
+          <command:parameterValue required="true">String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false">
+          <maml:name>RequiresAuth</maml:name>
+        </command:parameter>
+        <command:parameter required="false">
+          <maml:name>AllowAnonymous</maml:name>
+        </command:parameter>
+        <command:parameter required="false">
+          <maml:name>Controller</maml:name>
+          <command:parameterValue required="true">String</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+
+    <command:parameters>
+      <command:parameter required="true" position="0" pipelineInput="true (ByValue, ByPropertyName)">
+        <maml:name>Path</maml:name>
+        <maml:description>
+          <maml:para>Path to one or more .NET assembly files (.dll). Supports wildcards and pipeline input. You can pipe FileInfo objects (e.g. from Get-ChildItem) directly.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true">String[]</command:parameterValue>
+        <dev:type>
+          <maml:name>String[]</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+
+      <command:parameter required="false">
+        <maml:name>HttpMethod</maml:name>
+        <maml:description>
+          <maml:para>Filter endpoints by HTTP method. Valid values: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+
+      <command:parameter required="false">
+        <maml:name>RequiresAuth</maml:name>
+        <maml:description>
+          <maml:para>When specified, only returns endpoints that require authorization (have [Authorize] on the action or controller).</maml:para>
+        </maml:description>
+        <dev:type>
+          <maml:name>SwitchParameter</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>False</dev:defaultValue>
+      </command:parameter>
+
+      <command:parameter required="false">
+        <maml:name>AllowAnonymous</maml:name>
+        <maml:description>
+          <maml:para>When specified, only returns endpoints that allow anonymous access (have [AllowAnonymous] or lack [Authorize]).</maml:para>
+        </maml:description>
+        <dev:type>
+          <maml:name>SwitchParameter</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>False</dev:defaultValue>
+      </command:parameter>
+
+      <command:parameter required="false">
+        <maml:name>Controller</maml:name>
+        <maml:description>
+          <maml:para>Filter endpoints by controller name. Supports wildcards (e.g. "User*", "*Admin*"). The match is case-insensitive.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+    </command:parameters>
+
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <maml:name>System.String[]</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Assembly file paths. You can also pipe FileInfo objects from Get-ChildItem.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>Spy.Core.Contracts.EndpointInfo</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Objects representing discovered HTTP endpoints, including Route, HttpMethod, ControllerName, ActionName, RequiresAuthorization, AllowAnonymous, Roles, Policies, Parameters, ReturnType, and IsAsync.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para>The assembly is loaded via System.Reflection. Dependent assemblies (e.g. ASP.NET Core framework) do not need to be present — Spy reads attributes by name rather than by type identity.</maml:para>
+      </maml:alert>
+    </maml:alertSet>
+
+    <command:examples>
+      <command:example>
+        <maml:title>Example 1: Discover all endpoints</maml:title>
+        <dev:code>Get-SpyEndpoint -Path .\MyApi.dll</dev:code>
+        <dev:remarks>
+          <maml:para>Scans MyApi.dll and returns all discovered HTTP endpoints in a table.</maml:para>
+        </dev:remarks>
+      </command:example>
+
+      <command:example>
+        <maml:title>Example 2: Filter by HTTP method</maml:title>
+        <dev:code>Get-SpyEndpoint -Path .\MyApi.dll -HttpMethod DELETE</dev:code>
+        <dev:remarks>
+          <maml:para>Returns only DELETE endpoints. Useful for auditing destructive operations.</maml:para>
+        </dev:remarks>
+      </command:example>
+
+      <command:example>
+        <maml:title>Example 3: Filter by controller with wildcards</maml:title>
+        <dev:code>Get-SpyEndpoint -Path .\MyApi.dll -Controller User*</dev:code>
+        <dev:remarks>
+          <maml:para>Returns endpoints from controllers whose names start with "User".</maml:para>
+        </dev:remarks>
+      </command:example>
+
+      <command:example>
+        <maml:title>Example 4: Find unauthenticated endpoints</maml:title>
+        <dev:code>Get-SpyEndpoint -Path .\MyApi.dll -AllowAnonymous</dev:code>
+        <dev:remarks>
+          <maml:para>Returns only endpoints accessible without authentication.</maml:para>
+        </dev:remarks>
+      </command:example>
+
+      <command:example>
+        <maml:title>Example 5: Scan multiple assemblies via pipeline</maml:title>
+        <dev:code>Get-ChildItem .\bin\Release\net8.0\*.dll | Get-SpyEndpoint</dev:code>
+        <dev:remarks>
+          <maml:para>Pipes all DLLs in the output directory to Spy. Non-API assemblies (those with no controllers) produce no output.</maml:para>
+        </dev:remarks>
+      </command:example>
+
+      <command:example>
+        <maml:title>Example 6: Detailed view of a specific endpoint</maml:title>
+        <dev:code>Get-SpyEndpoint -Path .\MyApi.dll -Controller Users -HttpMethod POST | Format-List</dev:code>
+        <dev:remarks>
+          <maml:para>Shows full details including parameters, return type, roles, and policies.</maml:para>
+        </dev:remarks>
+      </command:example>
+    </command:examples>
+  </command:command>
+
+  <!-- ======================================================================
+       Find-SpyVulnerability
+       ====================================================================== -->
+  <command:command>
+    <command:details>
+      <command:name>Find-SpyVulnerability</command:name>
+      <command:verb>Find</command:verb>
+      <command:noun>SpyVulnerability</command:noun>
+      <maml:description>
+        <maml:para>Analyzes .NET assemblies for security vulnerabilities in HTTP endpoints.</maml:para>
+      </maml:description>
+    </command:details>
+
+    <maml:description>
+      <maml:para>Scans one or more .NET assemblies and applies security analysis rules to every discovered HTTP endpoint. Issues are categorized by severity:</maml:para>
+      <maml:para>- High: State-changing endpoints (DELETE, POST, PUT, PATCH) without [Authorize]</maml:para>
+      <maml:para>- Medium: Endpoints with neither [Authorize] nor [AllowAnonymous] (unclear security intent)</maml:para>
+      <maml:para>- Low: [Authorize] present but without specific Roles or Policy (any authenticated user has access)</maml:para>
+      <maml:para>Each issue includes a description of the problem and a remediation recommendation.</maml:para>
+    </maml:description>
+
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Find-SpyVulnerability</maml:name>
+        <command:parameter required="true" position="0" pipelineInput="true (ByValue, ByPropertyName)">
+          <maml:name>Path</maml:name>
+          <command:parameterValue required="true">String[]</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false">
+          <maml:name>MinimumSeverity</maml:name>
+          <command:parameterValue required="true">SecuritySeverity</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+
+    <command:parameters>
+      <command:parameter required="true" position="0" pipelineInput="true (ByValue, ByPropertyName)">
+        <maml:name>Path</maml:name>
+        <maml:description>
+          <maml:para>Path to one or more .NET assembly files (.dll). Supports wildcards and pipeline input.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true">String[]</command:parameterValue>
+        <dev:type>
+          <maml:name>String[]</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+
+      <command:parameter required="false">
+        <maml:name>MinimumSeverity</maml:name>
+        <maml:description>
+          <maml:para>Only report issues at or above this severity level. Valid values: Info, Low, Medium, High, Critical. Defaults to Info (show everything).</maml:para>
+        </maml:description>
+        <command:parameterValue required="true">SecuritySeverity</command:parameterValue>
+        <dev:type>
+          <maml:name>Spy.Core.Contracts.SecuritySeverity</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>Info</dev:defaultValue>
+      </command:parameter>
+    </command:parameters>
+
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <maml:name>System.String[]</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Assembly file paths. You can also pipe FileInfo objects from Get-ChildItem.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>Spy.Core.Contracts.SecurityIssue</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Objects representing security issues found, including Severity, Title, Description, EndpointRoute, HttpMethod, ControllerName, ActionName, and Recommendation.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para>High-severity issues also produce a warning message via Write-Warning with the count of issues found.</maml:para>
+      </maml:alert>
+    </maml:alertSet>
+
+    <command:examples>
+      <command:example>
+        <maml:title>Example 1: Find all security issues</maml:title>
+        <dev:code>Find-SpyVulnerability -Path .\MyApi.dll</dev:code>
+        <dev:remarks>
+          <maml:para>Scans MyApi.dll and returns all security issues sorted by severity (highest first).</maml:para>
+        </dev:remarks>
+      </command:example>
+
+      <command:example>
+        <maml:title>Example 2: Only high-severity issues</maml:title>
+        <dev:code>Find-SpyVulnerability -Path .\MyApi.dll -MinimumSeverity High</dev:code>
+        <dev:remarks>
+          <maml:para>Returns only High and Critical severity issues. Useful for CI/CD gates.</maml:para>
+        </dev:remarks>
+      </command:example>
+
+      <command:example>
+        <maml:title>Example 3: Detailed issue view</maml:title>
+        <dev:code>Find-SpyVulnerability -Path .\MyApi.dll | Format-List</dev:code>
+        <dev:remarks>
+          <maml:para>Shows full details including recommendations for each issue.</maml:para>
+        </dev:remarks>
+      </command:example>
+
+      <command:example>
+        <maml:title>Example 4: CI/CD security gate</maml:title>
+        <dev:code>$issues = Find-SpyVulnerability -Path .\MyApi.dll -MinimumSeverity High
+if ($issues) { Write-Error "Found $($issues.Count) high-severity issues"; exit 1 }</dev:code>
+        <dev:remarks>
+          <maml:para>Fails the build if any high-severity security issues are detected.</maml:para>
+        </dev:remarks>
+      </command:example>
+
+      <command:example>
+        <maml:title>Example 5: Scan multiple assemblies</maml:title>
+        <dev:code>Get-ChildItem .\services\*\bin\Release\*.dll | Find-SpyVulnerability -MinimumSeverity Medium</dev:code>
+        <dev:remarks>
+          <maml:para>Scans all service assemblies for medium-severity or higher issues.</maml:para>
+        </dev:remarks>
+      </command:example>
+    </command:examples>
+  </command:command>
+
+  <!-- ======================================================================
+       Export-SpyReport
+       ====================================================================== -->
+  <command:command>
+    <command:details>
+      <command:name>Export-SpyReport</command:name>
+      <command:verb>Export</command:verb>
+      <command:noun>SpyReport</command:noun>
+      <maml:description>
+        <maml:para>Generates a scan report for a .NET assembly in JSON, CSV, or Markdown format.</maml:para>
+      </maml:description>
+    </command:details>
+
+    <maml:description>
+      <maml:para>Scans a .NET assembly for HTTP endpoints and security issues, then outputs a complete report in the specified format.</maml:para>
+      <maml:para>When OutputPath is specified, the report is written to disk and an AssemblyReport object is returned. When OutputPath is omitted, the formatted report string is written to the pipeline.</maml:para>
+      <maml:para>The JSON format includes a summary section, an endpoints array, and a securityIssues array. The CSV format contains two sections (endpoints and security issues) with headers. The Markdown format produces a human-readable document with tables and issue details.</maml:para>
+    </maml:description>
+
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Export-SpyReport</maml:name>
+        <command:parameter required="true" position="0" pipelineInput="true (ByValue, ByPropertyName)">
+          <maml:name>Path</maml:name>
+          <command:parameterValue required="true">String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" position="1">
+          <maml:name>OutputPath</maml:name>
+          <command:parameterValue required="true">String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false">
+          <maml:name>Format</maml:name>
+          <command:parameterValue required="true">String</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+
+    <command:parameters>
+      <command:parameter required="true" position="0" pipelineInput="true (ByValue, ByPropertyName)">
+        <maml:name>Path</maml:name>
+        <maml:description>
+          <maml:para>Path to the .NET assembly file (.dll) to scan.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+
+      <command:parameter required="false" position="1">
+        <maml:name>OutputPath</maml:name>
+        <maml:description>
+          <maml:para>File path to write the report to. If omitted, the formatted report string is written to the pipeline. When specified, an AssemblyReport object is returned instead.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+
+      <command:parameter required="false">
+        <maml:name>Format</maml:name>
+        <maml:description>
+          <maml:para>The output format for the report. Valid values: JSON, CSV, Markdown. Defaults to JSON.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true">String</command:parameterValue>
+        <dev:type>
+          <maml:name>String</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>JSON</dev:defaultValue>
+      </command:parameter>
+    </command:parameters>
+
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <maml:name>System.String</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>An assembly file path.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>System.String</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>When OutputPath is not specified, returns the formatted report as a string.</maml:para>
+        </maml:description>
+      </command:returnValue>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>Spy.Core.Contracts.AssemblyReport</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>When OutputPath is specified, writes the report to disk and returns an AssemblyReport object with summary statistics.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+
+    <command:examples>
+      <command:example>
+        <maml:title>Example 1: JSON report to stdout</maml:title>
+        <dev:code>Export-SpyReport -Path .\MyApi.dll</dev:code>
+        <dev:remarks>
+          <maml:para>Outputs a JSON report string to the pipeline.</maml:para>
+        </dev:remarks>
+      </command:example>
+
+      <command:example>
+        <maml:title>Example 2: Markdown report to file</maml:title>
+        <dev:code>Export-SpyReport -Path .\MyApi.dll -OutputPath .\report.md -Format Markdown</dev:code>
+        <dev:remarks>
+          <maml:para>Writes a Markdown report to report.md and returns an AssemblyReport object.</maml:para>
+        </dev:remarks>
+      </command:example>
+
+      <command:example>
+        <maml:title>Example 3: CSV report to file</maml:title>
+        <dev:code>Export-SpyReport -Path .\MyApi.dll -OutputPath .\report.csv -Format CSV</dev:code>
+        <dev:remarks>
+          <maml:para>Writes a CSV report with endpoint and security issue sections.</maml:para>
+        </dev:remarks>
+      </command:example>
+
+      <command:example>
+        <maml:title>Example 4: Parse JSON report in pipeline</maml:title>
+        <dev:code>$report = Export-SpyReport -Path .\MyApi.dll -Format JSON | ConvertFrom-Json
+$report.summary.totalEndpoints</dev:code>
+        <dev:remarks>
+          <maml:para>Generates a JSON report and parses it for programmatic access to the data.</maml:para>
+        </dev:remarks>
+      </command:example>
+
+      <command:example>
+        <maml:title>Example 5: Generate reports for multiple services</maml:title>
+        <dev:code>@("UserService", "OrderService") | ForEach-Object {
+    Export-SpyReport -Path ".\$_\bin\Release\$_.dll" -OutputPath ".\reports\$_.md" -Format Markdown
+}</dev:code>
+        <dev:remarks>
+          <maml:para>Generates a Markdown report for each service assembly.</maml:para>
+        </dev:remarks>
+      </command:example>
+    </command:examples>
+  </command:command>
+
+</helpItems>
