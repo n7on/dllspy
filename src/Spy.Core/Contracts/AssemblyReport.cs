@@ -18,23 +18,29 @@ namespace Spy.Core.Contracts
         /// <summary>Gets or sets the timestamp of the scan.</summary>
         public DateTime ScanTimestamp { get; set; }
 
-        /// <summary>Gets or sets the discovered endpoints.</summary>
-        public List<EndpointInfo> Endpoints { get; set; } = new List<EndpointInfo>();
+        /// <summary>Gets or sets all discovered input surfaces.</summary>
+        public List<InputSurface> Surfaces { get; set; } = new List<InputSurface>();
 
         /// <summary>Gets or sets the security issues found.</summary>
         public List<SecurityIssue> SecurityIssues { get; set; } = new List<SecurityIssue>();
 
-        /// <summary>Gets the total number of endpoints discovered.</summary>
-        public int TotalEndpoints => Endpoints.Count;
+        /// <summary>Gets the total number of input surfaces discovered.</summary>
+        public int TotalSurfaces => Surfaces.Count;
 
-        /// <summary>Gets the number of distinct controllers found.</summary>
-        public int TotalControllers => Endpoints.Select(e => e.ControllerName).Distinct().Count();
+        /// <summary>Gets the number of HTTP endpoints discovered.</summary>
+        public int TotalHttpEndpoints => Surfaces.Count(s => s.SurfaceType == SurfaceType.HttpEndpoint);
 
-        /// <summary>Gets the number of endpoints requiring authorization.</summary>
-        public int AuthenticatedEndpoints => Endpoints.Count(e => e.RequiresAuthorization);
+        /// <summary>Gets the number of SignalR methods discovered.</summary>
+        public int TotalSignalRMethods => Surfaces.Count(s => s.SurfaceType == SurfaceType.SignalRMethod);
 
-        /// <summary>Gets the number of endpoints allowing anonymous access.</summary>
-        public int AnonymousEndpoints => Endpoints.Count(e => e.AllowAnonymous || !e.RequiresAuthorization);
+        /// <summary>Gets the number of distinct classes found.</summary>
+        public int TotalClasses => Surfaces.Select(s => s.ClassName).Distinct().Count();
+
+        /// <summary>Gets the number of surfaces requiring authorization.</summary>
+        public int AuthenticatedSurfaces => Surfaces.Count(s => s.RequiresAuthorization);
+
+        /// <summary>Gets the number of surfaces allowing anonymous access.</summary>
+        public int AnonymousSurfaces => Surfaces.Count(s => s.AllowAnonymous || !s.RequiresAuthorization);
 
         /// <summary>Gets the total number of security issues found.</summary>
         public int TotalSecurityIssues => SecurityIssues.Count;
@@ -50,6 +56,6 @@ namespace Spy.Core.Contracts
 
         /// <inheritdoc />
         public override string ToString() =>
-            $"Assembly: {AssemblyName} | Endpoints: {TotalEndpoints} | Issues: {TotalSecurityIssues}";
+            $"Assembly: {AssemblyName} | Surfaces: {TotalSurfaces} | Issues: {TotalSecurityIssues}";
     }
 }

@@ -20,7 +20,7 @@ namespace Spy.Core.Contracts
     }
 
     /// <summary>
-    /// Represents a security vulnerability or misconfiguration found in an endpoint.
+    /// Represents a security vulnerability or misconfiguration found in an input surface.
     /// </summary>
     public class SecurityIssue
     {
@@ -33,22 +33,22 @@ namespace Spy.Core.Contracts
         /// <summary>Gets or sets the severity level.</summary>
         public SecuritySeverity Severity { get; set; }
 
-        /// <summary>Gets or sets the route of the affected endpoint.</summary>
-        public string EndpointRoute { get; set; }
+        /// <summary>Gets or sets the display route of the affected surface (e.g. "GET api/users" or "WS chat/Send").</summary>
+        public string SurfaceRoute { get; set; }
 
-        /// <summary>Gets or sets the HTTP method of the affected endpoint.</summary>
-        public string HttpMethod { get; set; }
+        /// <summary>Gets or sets the type of input surface where the issue was found.</summary>
+        public SurfaceType SurfaceType { get; set; }
 
         /// <summary>Gets or sets the recommended remediation.</summary>
         public string Recommendation { get; set; }
 
-        /// <summary>Gets or sets the controller name of the affected endpoint.</summary>
-        public string ControllerName { get; set; }
+        /// <summary>Gets or sets the class name of the affected surface.</summary>
+        public string ClassName { get; set; }
 
-        /// <summary>Gets or sets the action name of the affected endpoint.</summary>
-        public string ActionName { get; set; }
+        /// <summary>Gets or sets the method name of the affected surface.</summary>
+        public string MethodName { get; set; }
 
         /// <inheritdoc />
-        public override string ToString() => $"[{Severity}] {Title}: {EndpointRoute}";
+        public override string ToString() => $"[{Severity}] {Title}: {SurfaceRoute}";
     }
 }

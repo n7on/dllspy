@@ -6,30 +6,34 @@
   xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10">
 
   <!-- ======================================================================
-       Get-SpyEndpoint
+       Get-SpySurface
        ====================================================================== -->
   <command:command>
     <command:details>
-      <command:name>Get-SpyEndpoint</command:name>
+      <command:name>Get-SpySurface</command:name>
       <command:verb>Get</command:verb>
-      <command:noun>SpyEndpoint</command:noun>
+      <command:noun>SpySurface</command:noun>
       <maml:description>
-        <maml:para>Discovers HTTP endpoints in compiled .NET assemblies using reflection.</maml:para>
+        <maml:para>Discovers input surfaces (HTTP endpoints, SignalR hub methods) in compiled .NET assemblies using reflection.</maml:para>
       </maml:description>
     </command:details>
 
     <maml:description>
-      <maml:para>Scans one or more .NET assemblies for ASP.NET Core and Web API controllers, extracting all HTTP endpoints with their routes, HTTP methods, authorization requirements, parameters, and return types.</maml:para>
-      <maml:para>The cmdlet detects controllers by inheritance (ControllerBase, Controller, ApiController), by the [ApiController] attribute, or by the naming convention of classes ending in "Controller".</maml:para>
-      <maml:para>Routes are resolved by combining controller-level and action-level [Route] templates, with support for [controller] and [action] tokens.</maml:para>
+      <maml:para>Scans one or more .NET assemblies for ASP.NET Core controllers and SignalR hubs, extracting all input surfaces with their routes, HTTP methods, authorization requirements, parameters, and return types.</maml:para>
+      <maml:para>HTTP endpoints are detected by controller inheritance (ControllerBase, Controller, ApiController), the [ApiController] attribute, or by naming convention. SignalR hubs are detected by inheritance from Hub or Hub&lt;T&gt;.</maml:para>
+      <maml:para>Routes for HTTP endpoints are resolved by combining controller-level and action-level [Route] templates. SignalR hub routes use conventional naming (strip "Hub" suffix).</maml:para>
     </maml:description>
 
     <command:syntax>
       <command:syntaxItem>
-        <maml:name>Get-SpyEndpoint</maml:name>
+        <maml:name>Get-SpySurface</maml:name>
         <command:parameter required="true" position="0" pipelineInput="true (ByValue, ByPropertyName)">
           <maml:name>Path</maml:name>
           <command:parameterValue required="true">String[]</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false">
+          <maml:name>Type</maml:name>
+          <command:parameterValue required="true">SurfaceType</command:parameterValue>
         </command:parameter>
         <command:parameter required="false">
           <maml:name>HttpMethod</maml:name>
@@ -42,7 +46,7 @@
           <maml:name>AllowAnonymous</maml:name>
         </command:parameter>
         <command:parameter required="false">
-          <maml:name>Controller</maml:name>
+          <maml:name>Class</maml:name>
           <command:parameterValue required="true">String</command:parameterValue>
         </command:parameter>
       </command:syntaxItem>
@@ -62,9 +66,21 @@
       </command:parameter>
 
       <command:parameter required="false">
+        <maml:name>Type</maml:name>
+        <maml:description>
+          <maml:para>Filter surfaces by type. Valid values: HttpEndpoint, SignalRMethod. When omitted, all surface types are returned.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true">SurfaceType</command:parameterValue>
+        <dev:type>
+          <maml:name>Spy.Core.Contracts.SurfaceType</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
+
+      <command:parameter required="false">
         <maml:name>HttpMethod</maml:name>
         <maml:description>
-          <maml:para>Filter endpoints by HTTP method. Valid values: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS.</maml:para>
+          <maml:para>Filter HTTP endpoints by HTTP method. Valid values: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS. Only applies to HttpEndpoint surfaces.</maml:para>
         </maml:description>
         <command:parameterValue required="true">String</command:parameterValue>
         <dev:type>
@@ -76,7 +92,7 @@
       <command:parameter required="false">
         <maml:name>RequiresAuth</maml:name>
         <maml:description>
-          <maml:para>When specified, only returns endpoints that require authorization (have [Authorize] on the action or controller).</maml:para>
+          <maml:para>When specified, only returns surfaces that require authorization.</maml:para>
         </maml:description>
         <dev:type>
           <maml:name>SwitchParameter</maml:name>
@@ -88,7 +104,7 @@
       <command:parameter required="false">
         <maml:name>AllowAnonymous</maml:name>
         <maml:description>
-          <maml:para>When specified, only returns endpoints that allow anonymous access (have [AllowAnonymous] or lack [Authorize]).</maml:para>
+          <maml:para>When specified, only returns surfaces that allow anonymous access.</maml:para>
         </maml:description>
         <dev:type>
           <maml:name>SwitchParameter</maml:name>
@@ -98,9 +114,9 @@
       </command:parameter>
 
       <command:parameter required="false">
-        <maml:name>Controller</maml:name>
+        <maml:name>Class</maml:name>
         <maml:description>
-          <maml:para>Filter endpoints by controller name. Supports wildcards (e.g. "User*", "*Admin*"). The match is case-insensitive.</maml:para>
+          <maml:para>Filter surfaces by class name (controller or hub). Supports wildcards (e.g. "User*", "*Hub"). The match is case-insensitive.</maml:para>
         </maml:description>
         <command:parameterValue required="true">String</command:parameterValue>
         <dev:type>
@@ -124,10 +140,10 @@
     <command:returnValues>
       <command:returnValue>
         <dev:type>
-          <maml:name>Spy.Core.Contracts.EndpointInfo</maml:name>
+          <maml:name>Spy.Core.Contracts.InputSurface</maml:name>
         </dev:type>
         <maml:description>
-          <maml:para>Objects representing discovered HTTP endpoints, including Route, HttpMethod, ControllerName, ActionName, RequiresAuthorization, AllowAnonymous, Roles, Policies, Parameters, ReturnType, and IsAsync.</maml:para>
+          <maml:para>Objects representing discovered input surfaces. HttpEndpoint objects include Route, HttpMethod, ClassName, MethodName, and authorization details. SignalRMethod objects include HubName, HubRoute, MethodName, streaming flags, and authorization details.</maml:para>
         </maml:description>
       </command:returnValue>
     </command:returnValues>
@@ -135,55 +151,56 @@
     <maml:alertSet>
       <maml:alert>
         <maml:para>The assembly is loaded via System.Reflection. Dependent assemblies (e.g. ASP.NET Core framework) do not need to be present — Spy reads attributes by name rather than by type identity.</maml:para>
+        <maml:para>SignalR hub routes are conventional (strip "Hub" suffix) since actual MapHub routes are not discoverable via reflection.</maml:para>
       </maml:alert>
     </maml:alertSet>
 
     <command:examples>
       <command:example>
-        <maml:title>Example 1: Discover all endpoints</maml:title>
-        <dev:code>Get-SpyEndpoint -Path .\MyApi.dll</dev:code>
+        <maml:title>Example 1: Discover all surfaces</maml:title>
+        <dev:code>Get-SpySurface -Path .\MyApi.dll</dev:code>
         <dev:remarks>
-          <maml:para>Scans MyApi.dll and returns all discovered HTTP endpoints in a table.</maml:para>
+          <maml:para>Scans MyApi.dll and returns all discovered HTTP endpoints and SignalR hub methods.</maml:para>
         </dev:remarks>
       </command:example>
 
       <command:example>
-        <maml:title>Example 2: Filter by HTTP method</maml:title>
-        <dev:code>Get-SpyEndpoint -Path .\MyApi.dll -HttpMethod DELETE</dev:code>
+        <maml:title>Example 2: Only HTTP endpoints</maml:title>
+        <dev:code>Get-SpySurface -Path .\MyApi.dll -Type HttpEndpoint</dev:code>
         <dev:remarks>
-          <maml:para>Returns only DELETE endpoints. Useful for auditing destructive operations.</maml:para>
+          <maml:para>Returns only HTTP endpoints, excluding SignalR methods.</maml:para>
         </dev:remarks>
       </command:example>
 
       <command:example>
-        <maml:title>Example 3: Filter by controller with wildcards</maml:title>
-        <dev:code>Get-SpyEndpoint -Path .\MyApi.dll -Controller User*</dev:code>
+        <maml:title>Example 3: Only SignalR hub methods</maml:title>
+        <dev:code>Get-SpySurface -Path .\MyApi.dll -Type SignalRMethod</dev:code>
         <dev:remarks>
-          <maml:para>Returns endpoints from controllers whose names start with "User".</maml:para>
+          <maml:para>Returns only SignalR hub methods.</maml:para>
         </dev:remarks>
       </command:example>
 
       <command:example>
-        <maml:title>Example 4: Find unauthenticated endpoints</maml:title>
-        <dev:code>Get-SpyEndpoint -Path .\MyApi.dll -AllowAnonymous</dev:code>
+        <maml:title>Example 4: Filter by HTTP method</maml:title>
+        <dev:code>Get-SpySurface -Path .\MyApi.dll -HttpMethod DELETE</dev:code>
         <dev:remarks>
-          <maml:para>Returns only endpoints accessible without authentication.</maml:para>
+          <maml:para>Returns only DELETE HTTP endpoints. Useful for auditing destructive operations.</maml:para>
         </dev:remarks>
       </command:example>
 
       <command:example>
-        <maml:title>Example 5: Scan multiple assemblies via pipeline</maml:title>
-        <dev:code>Get-ChildItem .\bin\Release\net8.0\*.dll | Get-SpyEndpoint</dev:code>
+        <maml:title>Example 5: Filter by class name with wildcards</maml:title>
+        <dev:code>Get-SpySurface -Path .\MyApi.dll -Class Chat*</dev:code>
         <dev:remarks>
-          <maml:para>Pipes all DLLs in the output directory to Spy. Non-API assemblies (those with no controllers) produce no output.</maml:para>
+          <maml:para>Returns surfaces from classes whose names start with "Chat" (e.g. ChatHub, ChatController).</maml:para>
         </dev:remarks>
       </command:example>
 
       <command:example>
-        <maml:title>Example 6: Detailed view of a specific endpoint</maml:title>
-        <dev:code>Get-SpyEndpoint -Path .\MyApi.dll -Controller Users -HttpMethod POST | Format-List</dev:code>
+        <maml:title>Example 6: Scan multiple assemblies via pipeline</maml:title>
+        <dev:code>Get-ChildItem .\bin\Release\net8.0\*.dll | Get-SpySurface</dev:code>
         <dev:remarks>
-          <maml:para>Shows full details including parameters, return type, roles, and policies.</maml:para>
+          <maml:para>Pipes all DLLs in the output directory to Spy. Assemblies without controllers or hubs produce no output.</maml:para>
         </dev:remarks>
       </command:example>
     </command:examples>
@@ -198,15 +215,19 @@
       <command:verb>Find</command:verb>
       <command:noun>SpyVulnerability</command:noun>
       <maml:description>
-        <maml:para>Analyzes .NET assemblies for security vulnerabilities in HTTP endpoints.</maml:para>
+        <maml:para>Analyzes .NET assemblies for security vulnerabilities in input surfaces.</maml:para>
       </maml:description>
     </command:details>
 
     <maml:description>
-      <maml:para>Scans one or more .NET assemblies and applies security analysis rules to every discovered HTTP endpoint. Issues are categorized by severity:</maml:para>
+      <maml:para>Scans one or more .NET assemblies and applies security analysis rules to every discovered input surface (HTTP endpoints and SignalR hub methods). Issues are categorized by severity:</maml:para>
+      <maml:para>HTTP endpoints:</maml:para>
       <maml:para>- High: State-changing endpoints (DELETE, POST, PUT, PATCH) without [Authorize]</maml:para>
       <maml:para>- Medium: Endpoints with neither [Authorize] nor [AllowAnonymous] (unclear security intent)</maml:para>
-      <maml:para>- Low: [Authorize] present but without specific Roles or Policy (any authenticated user has access)</maml:para>
+      <maml:para>- Low: [Authorize] present but without specific Roles or Policy</maml:para>
+      <maml:para>SignalR hub methods:</maml:para>
+      <maml:para>- High: Hub methods without [Authorize] (directly invocable by clients)</maml:para>
+      <maml:para>- Low: [Authorize] present but without specific Roles or Policy</maml:para>
       <maml:para>Each issue includes a description of the problem and a remediation recommendation.</maml:para>
     </maml:description>
 
@@ -220,6 +241,10 @@
         <command:parameter required="false">
           <maml:name>MinimumSeverity</maml:name>
           <command:parameterValue required="true">SecuritySeverity</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false">
+          <maml:name>Type</maml:name>
+          <command:parameterValue required="true">SurfaceType</command:parameterValue>
         </command:parameter>
       </command:syntaxItem>
     </command:syntax>
@@ -249,6 +274,18 @@
         </dev:type>
         <dev:defaultValue>Info</dev:defaultValue>
       </command:parameter>
+
+      <command:parameter required="false">
+        <maml:name>Type</maml:name>
+        <maml:description>
+          <maml:para>Filter issues by surface type. Valid values: HttpEndpoint, SignalRMethod. When omitted, issues for all surface types are returned.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true">SurfaceType</command:parameterValue>
+        <dev:type>
+          <maml:name>Spy.Core.Contracts.SurfaceType</maml:name>
+          <maml:uri />
+        </dev:type>
+      </command:parameter>
     </command:parameters>
 
     <command:inputTypes>
@@ -268,7 +305,7 @@
           <maml:name>Spy.Core.Contracts.SecurityIssue</maml:name>
         </dev:type>
         <maml:description>
-          <maml:para>Objects representing security issues found, including Severity, Title, Description, EndpointRoute, HttpMethod, ControllerName, ActionName, and Recommendation.</maml:para>
+          <maml:para>Objects representing security issues found, including Severity, SurfaceType, Title, Description, SurfaceRoute, ClassName, MethodName, and Recommendation.</maml:para>
         </maml:description>
       </command:returnValue>
     </command:returnValues>
@@ -297,10 +334,10 @@
       </command:example>
 
       <command:example>
-        <maml:title>Example 3: Detailed issue view</maml:title>
-        <dev:code>Find-SpyVulnerability -Path .\MyApi.dll | Format-List</dev:code>
+        <maml:title>Example 3: Only SignalR issues</maml:title>
+        <dev:code>Find-SpyVulnerability -Path .\MyApi.dll -Type SignalRMethod</dev:code>
         <dev:remarks>
-          <maml:para>Shows full details including recommendations for each issue.</maml:para>
+          <maml:para>Returns only security issues related to SignalR hub methods.</maml:para>
         </dev:remarks>
       </command:example>
 
@@ -318,158 +355,6 @@ if ($issues) { Write-Error "Found $($issues.Count) high-severity issues"; exit 1
         <dev:code>Get-ChildItem .\services\*\bin\Release\*.dll | Find-SpyVulnerability -MinimumSeverity Medium</dev:code>
         <dev:remarks>
           <maml:para>Scans all service assemblies for medium-severity or higher issues.</maml:para>
-        </dev:remarks>
-      </command:example>
-    </command:examples>
-  </command:command>
-
-  <!-- ======================================================================
-       Export-SpyReport
-       ====================================================================== -->
-  <command:command>
-    <command:details>
-      <command:name>Export-SpyReport</command:name>
-      <command:verb>Export</command:verb>
-      <command:noun>SpyReport</command:noun>
-      <maml:description>
-        <maml:para>Generates a scan report for a .NET assembly in JSON, CSV, or Markdown format.</maml:para>
-      </maml:description>
-    </command:details>
-
-    <maml:description>
-      <maml:para>Scans a .NET assembly for HTTP endpoints and security issues, then outputs a complete report in the specified format.</maml:para>
-      <maml:para>When OutputPath is specified, the report is written to disk and an AssemblyReport object is returned. When OutputPath is omitted, the formatted report string is written to the pipeline.</maml:para>
-      <maml:para>The JSON format includes a summary section, an endpoints array, and a securityIssues array. The CSV format contains two sections (endpoints and security issues) with headers. The Markdown format produces a human-readable document with tables and issue details.</maml:para>
-    </maml:description>
-
-    <command:syntax>
-      <command:syntaxItem>
-        <maml:name>Export-SpyReport</maml:name>
-        <command:parameter required="true" position="0" pipelineInput="true (ByValue, ByPropertyName)">
-          <maml:name>Path</maml:name>
-          <command:parameterValue required="true">String</command:parameterValue>
-        </command:parameter>
-        <command:parameter required="false" position="1">
-          <maml:name>OutputPath</maml:name>
-          <command:parameterValue required="true">String</command:parameterValue>
-        </command:parameter>
-        <command:parameter required="false">
-          <maml:name>Format</maml:name>
-          <command:parameterValue required="true">String</command:parameterValue>
-        </command:parameter>
-      </command:syntaxItem>
-    </command:syntax>
-
-    <command:parameters>
-      <command:parameter required="true" position="0" pipelineInput="true (ByValue, ByPropertyName)">
-        <maml:name>Path</maml:name>
-        <maml:description>
-          <maml:para>Path to the .NET assembly file (.dll) to scan.</maml:para>
-        </maml:description>
-        <command:parameterValue required="true">String</command:parameterValue>
-        <dev:type>
-          <maml:name>String</maml:name>
-          <maml:uri />
-        </dev:type>
-      </command:parameter>
-
-      <command:parameter required="false" position="1">
-        <maml:name>OutputPath</maml:name>
-        <maml:description>
-          <maml:para>File path to write the report to. If omitted, the formatted report string is written to the pipeline. When specified, an AssemblyReport object is returned instead.</maml:para>
-        </maml:description>
-        <command:parameterValue required="true">String</command:parameterValue>
-        <dev:type>
-          <maml:name>String</maml:name>
-          <maml:uri />
-        </dev:type>
-      </command:parameter>
-
-      <command:parameter required="false">
-        <maml:name>Format</maml:name>
-        <maml:description>
-          <maml:para>The output format for the report. Valid values: JSON, CSV, Markdown. Defaults to JSON.</maml:para>
-        </maml:description>
-        <command:parameterValue required="true">String</command:parameterValue>
-        <dev:type>
-          <maml:name>String</maml:name>
-          <maml:uri />
-        </dev:type>
-        <dev:defaultValue>JSON</dev:defaultValue>
-      </command:parameter>
-    </command:parameters>
-
-    <command:inputTypes>
-      <command:inputType>
-        <dev:type>
-          <maml:name>System.String</maml:name>
-        </dev:type>
-        <maml:description>
-          <maml:para>An assembly file path.</maml:para>
-        </maml:description>
-      </command:inputType>
-    </command:inputTypes>
-
-    <command:returnValues>
-      <command:returnValue>
-        <dev:type>
-          <maml:name>System.String</maml:name>
-        </dev:type>
-        <maml:description>
-          <maml:para>When OutputPath is not specified, returns the formatted report as a string.</maml:para>
-        </maml:description>
-      </command:returnValue>
-      <command:returnValue>
-        <dev:type>
-          <maml:name>Spy.Core.Contracts.AssemblyReport</maml:name>
-        </dev:type>
-        <maml:description>
-          <maml:para>When OutputPath is specified, writes the report to disk and returns an AssemblyReport object with summary statistics.</maml:para>
-        </maml:description>
-      </command:returnValue>
-    </command:returnValues>
-
-    <command:examples>
-      <command:example>
-        <maml:title>Example 1: JSON report to stdout</maml:title>
-        <dev:code>Export-SpyReport -Path .\MyApi.dll</dev:code>
-        <dev:remarks>
-          <maml:para>Outputs a JSON report string to the pipeline.</maml:para>
-        </dev:remarks>
-      </command:example>
-
-      <command:example>
-        <maml:title>Example 2: Markdown report to file</maml:title>
-        <dev:code>Export-SpyReport -Path .\MyApi.dll -OutputPath .\report.md -Format Markdown</dev:code>
-        <dev:remarks>
-          <maml:para>Writes a Markdown report to report.md and returns an AssemblyReport object.</maml:para>
-        </dev:remarks>
-      </command:example>
-
-      <command:example>
-        <maml:title>Example 3: CSV report to file</maml:title>
-        <dev:code>Export-SpyReport -Path .\MyApi.dll -OutputPath .\report.csv -Format CSV</dev:code>
-        <dev:remarks>
-          <maml:para>Writes a CSV report with endpoint and security issue sections.</maml:para>
-        </dev:remarks>
-      </command:example>
-
-      <command:example>
-        <maml:title>Example 4: Parse JSON report in pipeline</maml:title>
-        <dev:code>$report = Export-SpyReport -Path .\MyApi.dll -Format JSON | ConvertFrom-Json
-$report.summary.totalEndpoints</dev:code>
-        <dev:remarks>
-          <maml:para>Generates a JSON report and parses it for programmatic access to the data.</maml:para>
-        </dev:remarks>
-      </command:example>
-
-      <command:example>
-        <maml:title>Example 5: Generate reports for multiple services</maml:title>
-        <dev:code>@("UserService", "OrderService") | ForEach-Object {
-    Export-SpyReport -Path ".\$_\bin\Release\$_.dll" -OutputPath ".\reports\$_.md" -Format Markdown
-}</dev:code>
-        <dev:remarks>
-          <maml:para>Generates a Markdown report for each service assembly.</maml:para>
         </dev:remarks>
       </command:example>
     </command:examples>

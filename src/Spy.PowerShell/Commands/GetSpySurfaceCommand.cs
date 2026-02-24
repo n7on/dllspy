@@ -9,17 +9,17 @@ using Spy.Core.Services;
 namespace Spy.PowerShell.Commands
 {
     /// <summary>
-    /// Discovers HTTP endpoints in compiled .NET assemblies.
+    /// Discovers input surfaces (HTTP endpoints, SignalR hub methods, etc.) in compiled .NET assemblies.
     /// </summary>
     /// <example>
-    /// <code>Get-SpyEndpoint -Path .\MyApi.dll</code>
+    /// <code>Get-SpySurface -Path .\MyApi.dll</code>
     /// </example>
     /// <example>
-    /// <code>Get-SpyEndpoint -Path .\MyApi.dll -HttpMethod GET -Controller Users</code>
+    /// <code>Get-SpySurface -Path .\MyApi.dll -Type HttpEndpoint -HttpMethod GET -Class Users</code>
     /// </example>
-    [Cmdlet(VerbsCommon.Get, "SpyEndpoint")]
-    [OutputType(typeof(EndpointInfo))]
-    public class GetSpyEndpointCommand : PSCmdlet
+    [Cmdlet(VerbsCommon.Get, "SpySurface")]
+    [OutputType(typeof(InputSurface))]
+    public class GetSpySurfaceCommand : PSCmdlet
     {
         /// <summary>
         /// Gets or sets the path to the .NET assembly. Supports wildcards.
@@ -30,37 +30,43 @@ namespace Spy.PowerShell.Commands
         public string[] Path { get; set; }
 
         /// <summary>
-        /// Gets or sets the HTTP method filter (GET, POST, PUT, DELETE, etc.).
+        /// Gets or sets the surface type filter.
+        /// </summary>
+        [Parameter]
+        public SurfaceType? Type { get; set; }
+
+        /// <summary>
+        /// Gets or sets the HTTP method filter (GET, POST, PUT, DELETE, etc.). Applies only to HTTP endpoints.
         /// </summary>
         [Parameter]
         [ValidateSet("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")]
         public string HttpMethod { get; set; }
 
         /// <summary>
-        /// Gets or sets whether to filter by endpoints requiring authorization.
+        /// Gets or sets whether to filter by surfaces requiring authorization.
         /// </summary>
         [Parameter]
         public SwitchParameter RequiresAuth { get; set; }
 
         /// <summary>
-        /// Gets or sets whether to filter by endpoints allowing anonymous access.
+        /// Gets or sets whether to filter by surfaces allowing anonymous access.
         /// </summary>
         [Parameter]
         public SwitchParameter AllowAnonymous { get; set; }
 
         /// <summary>
-        /// Gets or sets the controller name filter. Supports wildcards.
+        /// Gets or sets the class name filter. Supports wildcards.
         /// </summary>
         [Parameter]
         [SupportsWildcards]
-        public string Controller { get; set; }
+        public string Class { get; set; }
 
-        private IAssemblyScanner _scanner;
+        private AssemblyScanner _scanner;
 
         /// <inheritdoc />
         protected override void BeginProcessing()
         {
-            _scanner = ServiceFactory.CreateAssemblyScanner();
+            _scanner = ScannerFactory.Create();
         }
 
         /// <inheritdoc />
@@ -93,36 +99,42 @@ namespace Spy.PowerShell.Commands
             WriteVerbose($"Scanning assembly: {assemblyPath}");
 
             var report = _scanner.ScanAssembly(assemblyPath);
-            var endpoints = report.Endpoints.AsEnumerable();
+            var surfaces = report.Surfaces.AsEnumerable();
+
+            if (Type.HasValue)
+            {
+                surfaces = surfaces.Where(s => s.SurfaceType == Type.Value);
+            }
 
             if (!string.IsNullOrEmpty(HttpMethod))
             {
-                endpoints = endpoints.Where(e =>
-                    string.Equals(e.HttpMethod, HttpMethod, StringComparison.OrdinalIgnoreCase));
+                surfaces = surfaces.Where(s =>
+                    s is HttpEndpoint http &&
+                    string.Equals(http.HttpMethod, HttpMethod, StringComparison.OrdinalIgnoreCase));
             }
 
             if (RequiresAuth.IsPresent)
             {
-                endpoints = endpoints.Where(e => e.RequiresAuthorization);
+                surfaces = surfaces.Where(s => s.RequiresAuthorization);
             }
 
             if (AllowAnonymous.IsPresent)
             {
-                endpoints = endpoints.Where(e => e.AllowAnonymous);
+                surfaces = surfaces.Where(s => s.AllowAnonymous);
             }
 
-            if (!string.IsNullOrEmpty(Controller))
+            if (!string.IsNullOrEmpty(Class))
             {
-                var pattern = new WildcardPattern(Controller, WildcardOptions.IgnoreCase);
-                endpoints = endpoints.Where(e => pattern.IsMatch(e.ControllerName));
+                var pattern = new WildcardPattern(Class, WildcardOptions.IgnoreCase);
+                surfaces = surfaces.Where(s => pattern.IsMatch(s.ClassName));
             }
 
-            foreach (var endpoint in endpoints)
+            foreach (var surface in surfaces)
             {
-                WriteObject(endpoint);
+                WriteObject(surface);
             }
 
-            WriteVerbose($"Found {report.TotalEndpoints} endpoints in {assemblyPath}");
+            WriteVerbose($"Found {report.TotalSurfaces} surfaces in {assemblyPath}");
         }
 
         private List<string> ResolvePaths(string inputPath)
@@ -136,7 +148,6 @@ namespace Spy.PowerShell.Commands
             }
             catch (ItemNotFoundException)
             {
-                // Path doesn't exist — try as literal
                 var literalPath = GetUnresolvedProviderPathFromPSPath(inputPath);
                 if (File.Exists(literalPath))
                 {

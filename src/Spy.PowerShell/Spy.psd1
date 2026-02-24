@@ -10,16 +10,16 @@
     GUID = 'f7e8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b'
 
     # Author of this module
-    Author = 'Spy Contributors'
+    Author = 'Anton Lindström'
 
     # Company or vendor of this module
-    CompanyName = 'Spy'
+    CompanyName = 'Anton Lindström'
 
     # Copyright statement for this module
-    Copyright = '(c) Spy Contributors. All rights reserved.'
+    Copyright = '(c) Anton Lindström. All rights reserved.'
 
     # Description of the functionality provided by this module
-    Description = 'Discovers and analyzes HTTP endpoints in compiled .NET assemblies using reflection. Identifies security vulnerabilities, maps routes, and generates reports.'
+    Description = 'Discovers and analyzes input surfaces (HTTP endpoints, SignalR hubs, etc.) in compiled .NET assemblies using reflection. Identifies security vulnerabilities, maps routes, and generates reports.'
 
     # Minimum version of the PowerShell engine required by this module
     PowerShellVersion = '5.1'
@@ -41,9 +41,8 @@
 
     # Cmdlets to export from this module
     CmdletsToExport = @(
-        'Get-SpyEndpoint',
-        'Find-SpyVulnerability',
-        'Export-SpyReport'
+        'Get-SpySurface',
+        'Find-SpyVulnerability'
     )
 
     # Variables to export from this module
@@ -56,7 +55,7 @@
     PrivateData = @{
         PSData = @{
             # Tags applied to this module for discoverability in online galleries
-            Tags = @('security', 'aspnet', 'webapi', 'reflection', 'endpoints', 'vulnerability', 'audit')
+            Tags = @('security', 'aspnet', 'webapi', 'signalr', 'websocket', 'reflection', 'endpoints', 'vulnerability', 'audit')
 
             # A URL to the license for this module.
             LicenseUri = ''
@@ -65,7 +64,7 @@
             ProjectUri = ''
 
             # Release notes for this module
-            ReleaseNotes = 'Initial release of the Spy PowerShell module.'
+            ReleaseNotes = 'Added multi-surface discovery: HTTP endpoints and SignalR hub methods. Renamed Get-SpyEndpoint to Get-SpySurface.'
         }
     }
 

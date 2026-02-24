@@ -32,10 +32,10 @@ $outputDir = "C:\Projects\MySolution\src\*\bin\Release\net8.0"
 Get-ChildItem -Path $outputDir -Filter *.dll -Recurse |
     ForEach-Object {
         try {
-            $endpoints = Get-SpyEndpoint -Path $_.FullName -ErrorAction SilentlyContinue
-            if ($endpoints) {
+            $surfaces = Get-SpySurface -Path $_.FullName -ErrorAction SilentlyContinue
+            if ($surfaces) {
                 Write-Host "`n--- $($_.Name) ---" -ForegroundColor Cyan
-                $endpoints | Format-Table
+                $surfaces | Format-Table
             }
         } catch {
             # Skip non-API assemblies
@@ -43,68 +43,66 @@ Get-ChildItem -Path $outputDir -Filter *.dll -Recurse |
     }
 ```
 
-## Compare Endpoints Between Builds
+## Compare Surfaces Between Builds
 
-Save endpoint snapshots and compare:
+Save surface snapshots and compare:
 
 ```powershell
 # Capture baseline
-$baseline = Get-SpyEndpoint -Path .\v1\MyApi.dll |
-    Select-Object HttpMethod, Route, RequiresAuthorization
+$baseline = Get-SpySurface -Path .\v1\MyApi.dll |
+    Select-Object SurfaceType, DisplayRoute, RequiresAuthorization
 
 # Capture current
-$current = Get-SpyEndpoint -Path .\v2\MyApi.dll |
-    Select-Object HttpMethod, Route, RequiresAuthorization
+$current = Get-SpySurface -Path .\v2\MyApi.dll |
+    Select-Object SurfaceType, DisplayRoute, RequiresAuthorization
 
-# Find new endpoints
+# Find new surfaces
 $new = $current | Where-Object {
-    $route = $_.Route
-    $method = $_.HttpMethod
-    -not ($baseline | Where-Object { $_.Route -eq $route -and $_.HttpMethod -eq $method })
+    $route = $_.DisplayRoute
+    -not ($baseline | Where-Object { $_.DisplayRoute -eq $route })
 }
 
 if ($new) {
-    Write-Host "New endpoints in v2:" -ForegroundColor Yellow
+    Write-Host "New surfaces in v2:" -ForegroundColor Yellow
     $new | Format-Table
 }
 
-# Find endpoints where auth was removed
+# Find surfaces where auth was removed
 $authRemoved = $current | Where-Object {
-    $route = $_.Route
-    $method = $_.HttpMethod
+    $route = $_.DisplayRoute
     -not $_.RequiresAuthorization -and
     ($baseline | Where-Object {
-        $_.Route -eq $route -and $_.HttpMethod -eq $method -and $_.RequiresAuthorization
+        $_.DisplayRoute -eq $route -and $_.RequiresAuthorization
     })
 }
 
 if ($authRemoved) {
-    Write-Warning "Endpoints where authorization was REMOVED:"
+    Write-Warning "Surfaces where authorization was REMOVED:"
     $authRemoved | Format-Table
 }
 ```
 
 ## Generate API Documentation
 
-Create a quick API reference from the discovered endpoints:
+Create a quick API reference from the discovered surfaces:
 
 ```powershell
 Import-Module ./module/Spy
 
-$endpoints = Get-SpyEndpoint -Path .\MyApi.dll
+$surfaces = Get-SpySurface -Path .\MyApi.dll
 
-$grouped = $endpoints | Group-Object ControllerName
+$grouped = $surfaces | Group-Object ClassName
 
 foreach ($group in $grouped) {
     Write-Host "`n## $($group.Name)" -ForegroundColor Cyan
 
-    foreach ($ep in $group.Group) {
-        $auth = if ($ep.RequiresAuthorization) { "[Auth]" }
-                elseif ($ep.AllowAnonymous) { "[Public]" }
+    foreach ($s in $group.Group) {
+        $auth = if ($s.RequiresAuthorization) { "[Auth]" }
+                elseif ($s.AllowAnonymous) { "[Public]" }
                 else { "[?]" }
 
-        $params = ($ep.Parameters | ForEach-Object { "$($_.Name): $($_.Type)" }) -join ", "
-        Write-Host "  $($ep.HttpMethod.PadRight(7)) $($ep.Route.PadRight(35)) $auth  -> $($ep.ReturnType)"
+        $params = ($s.Parameters | ForEach-Object { "$($_.Name): $($_.Type)" }) -join ", "
+        Write-Host "  $($s.DisplayRoute.PadRight(40)) $auth  -> $($s.ReturnType)"
         if ($params) { Write-Host "           Params: $params" -ForegroundColor DarkGray }
     }
 }
@@ -115,40 +113,32 @@ foreach ($group in $grouped) {
 Quickly find the most dangerous pattern — delete operations without auth:
 
 ```powershell
-Get-SpyEndpoint -Path .\MyApi.dll -HttpMethod DELETE |
+Get-SpySurface -Path .\MyApi.dll -HttpMethod DELETE |
     Where-Object { -not $_.RequiresAuthorization } |
-    Format-List Route, ControllerName, ActionName, Roles, Policies
+    Format-List Route, ClassName, MethodName, Roles, Policies
 ```
 
-## Export Reports for Multiple Services
+## Audit SignalR Hubs
 
-Generate a report per microservice:
+Find all unauthenticated SignalR hub methods:
 
 ```powershell
-$services = @(
-    @{ Name = "UserService";   Path = ".\services\UserService\bin\Release\net8.0\UserService.dll" }
-    @{ Name = "OrderService";  Path = ".\services\OrderService\bin\Release\net8.0\OrderService.dll" }
-    @{ Name = "PaymentService"; Path = ".\services\PaymentService\bin\Release\net8.0\PaymentService.dll" }
-)
-
-foreach ($svc in $services) {
-    $outPath = ".\reports\$($svc.Name)-report.md"
-    Export-SpyReport -Path $svc.Path -OutputPath $outPath -Format Markdown
-    Write-Host "Report generated: $outPath" -ForegroundColor Green
-}
+Get-SpySurface -Path .\MyApi.dll -Type SignalRMethod |
+    Where-Object { -not $_.RequiresAuthorization } |
+    Format-Table HubName, MethodName, HubRoute
 ```
 
 ## Interactive Exploration with Format-List
 
-Get full details on a specific endpoint:
+Get full details on a specific HTTP endpoint:
 
 ```powershell
-Get-SpyEndpoint -Path .\MyApi.dll -Controller Users -HttpMethod POST | Format-List
+Get-SpySurface -Path .\MyApi.dll -Class Users -HttpMethod POST | Format-List
 
 # Output:
 # HTTP Method    : POST
 # Route          : api/Users
-# Controller     : Users
+# Class          : Users
 # Action         : Create
 # Requires Auth  : True
 # Allow Anonymous: False
@@ -159,30 +149,22 @@ Get-SpyEndpoint -Path .\MyApi.dll -Controller Users -HttpMethod POST | Format-Li
 # Parameters     : request (CreateUserRequest, Body)
 ```
 
-## Security Summary Dashboard
-
-Build a quick summary across all scanned assemblies:
+Get full details on a SignalR hub method:
 
 ```powershell
-$dlls = Get-ChildItem -Path .\bin\Release\net8.0\*.dll
+Get-SpySurface -Path .\MyApi.dll -Type SignalRMethod -Class ChatHub | Format-List
 
-$summary = foreach ($dll in $dlls) {
-    try {
-        $report = Export-SpyReport -Path $dll.FullName -Format JSON -ErrorAction Stop | ConvertFrom-Json
-        if ($report.summary.totalEndpoints -gt 0) {
-            [PSCustomObject]@{
-                Assembly    = $report.assemblyName
-                Endpoints   = $report.summary.totalEndpoints
-                Authenticated = $report.summary.authenticatedEndpoints
-                Anonymous   = $report.summary.anonymousEndpoints
-                Issues      = $report.summary.totalSecurityIssues
-                High        = $report.summary.highSeverityIssues
-            }
-        }
-    } catch {
-        # Skip non-API assemblies
-    }
-}
-
-$summary | Format-Table -AutoSize
+# Output:
+# Hub              : ChatHub
+# Method           : SendMessage
+# Hub Route        : chat
+# Streaming Result : False
+# Accepts Streaming: False
+# Requires Auth    : False
+# Allow Anonymous  : False
+# Roles            :
+# Policies         :
+# Return Type      : Task
+# Is Async         : True
+# Parameters       : user (string, Unknown); message (string, Unknown)
 ```

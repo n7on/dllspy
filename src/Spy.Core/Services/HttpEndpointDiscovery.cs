@@ -8,63 +8,41 @@ using Spy.Core.Contracts;
 namespace Spy.Core.Services
 {
     /// <summary>
-    /// Discovers HTTP endpoints in .NET assemblies.
-    /// </summary>
-    public interface IEndpointDiscovery
-    {
-        /// <summary>
-        /// Discovers all HTTP endpoints in the given assembly.
-        /// </summary>
-        /// <param name="assembly">The assembly to scan.</param>
-        /// <returns>A list of discovered endpoints.</returns>
-        List<EndpointInfo> DiscoverEndpoints(Assembly assembly);
-
-        /// <summary>
-        /// Gets all controller types from the assembly.
-        /// </summary>
-        /// <param name="assembly">The assembly to scan.</param>
-        /// <returns>Controller types found in the assembly.</returns>
-        List<Type> GetControllerTypes(Assembly assembly);
-    }
-
-    /// <summary>
     /// Discovers HTTP endpoints by scanning for ASP.NET Core / Web API controllers.
     /// </summary>
-    public class EndpointDiscovery : IEndpointDiscovery
+    public class HttpEndpointDiscovery : IDiscovery
     {
-        private readonly IAttributeAnalyzer _attributeAnalyzer;
+        private readonly AttributeAnalyzer _attributeAnalyzer;
 
         /// <summary>
-        /// Initializes a new instance of <see cref="EndpointDiscovery"/>.
+        /// Initializes a new instance of <see cref="HttpEndpointDiscovery"/>.
         /// </summary>
-        /// <param name="attributeAnalyzer">The attribute analyzer to use.</param>
-        public EndpointDiscovery(IAttributeAnalyzer attributeAnalyzer)
+        public HttpEndpointDiscovery(AttributeAnalyzer attributeAnalyzer)
         {
             _attributeAnalyzer = attributeAnalyzer ?? throw new ArgumentNullException(nameof(attributeAnalyzer));
         }
 
         /// <inheritdoc />
-        public List<EndpointInfo> DiscoverEndpoints(Assembly assembly)
+        public SurfaceType SurfaceType => SurfaceType.HttpEndpoint;
+
+        /// <inheritdoc />
+        public List<InputSurface> Discover(Assembly assembly)
         {
             if (assembly == null) throw new ArgumentNullException(nameof(assembly));
 
-            var endpoints = new List<EndpointInfo>();
+            var surfaces = new List<InputSurface>();
             var controllerTypes = GetControllerTypes(assembly);
 
             foreach (var controllerType in controllerTypes)
             {
-                var controllerEndpoints = DiscoverControllerEndpoints(controllerType);
-                endpoints.AddRange(controllerEndpoints);
+                surfaces.AddRange(DiscoverControllerEndpoints(controllerType));
             }
 
-            return endpoints;
+            return surfaces;
         }
 
-        /// <inheritdoc />
-        public List<Type> GetControllerTypes(Assembly assembly)
+        private List<Type> GetControllerTypes(Assembly assembly)
         {
-            if (assembly == null) throw new ArgumentNullException(nameof(assembly));
-
             var controllers = new List<Type>();
 
             Type[] types;
@@ -88,9 +66,9 @@ namespace Spy.Core.Services
             return controllers;
         }
 
-        private List<EndpointInfo> DiscoverControllerEndpoints(Type controllerType)
+        private List<HttpEndpoint> DiscoverControllerEndpoints(Type controllerType)
         {
-            var endpoints = new List<EndpointInfo>();
+            var endpoints = new List<HttpEndpoint>();
             var controllerName = GetControllerName(controllerType);
             var controllerRoute = _attributeAnalyzer.GetRouteTemplate(controllerType);
             var controllerHasAuth = _attributeAnalyzer.HasAuthorizeAttribute(controllerType);
@@ -104,7 +82,7 @@ namespace Spy.Core.Services
 
             foreach (var method in methods)
             {
-                if (method.IsSpecialName) continue; // Skip property accessors, etc.
+                if (method.IsSpecialName) continue;
 
                 var httpMethod = _attributeAnalyzer.GetHttpMethod(method);
                 var actionRoute = _attributeAnalyzer.GetRouteTemplate(method);
@@ -114,7 +92,6 @@ namespace Spy.Core.Services
                 var actionPolicies = _attributeAnalyzer.GetPolicies(method);
                 var actionSecurityAttrs = _attributeAnalyzer.GetSecurityAttributes(method);
 
-                // If no HTTP method attribute, check if it looks like a conventional action
                 var httpMethods = new List<string>();
                 if (httpMethod != null)
                 {
@@ -122,12 +99,10 @@ namespace Spy.Core.Services
                 }
                 else if (HasApiControllerAttribute(controllerType) || actionRoute != null || controllerRoute != null)
                 {
-                    // Convention: infer from method name prefix
                     httpMethods.Add(InferHttpMethod(method.Name));
                 }
                 else
                 {
-                    // Non-attributed method on a conventional MVC controller — treat as GET
                     httpMethods.Add("GET");
                 }
 
@@ -150,12 +125,12 @@ namespace Spy.Core.Services
                     var returnType = GetFriendlyReturnType(method);
                     var isAsync = IsAsyncMethod(method);
 
-                    endpoints.Add(new EndpointInfo
+                    endpoints.Add(new HttpEndpoint
                     {
                         Route = combinedRoute,
                         HttpMethod = verb,
-                        ControllerName = controllerName,
-                        ActionName = method.Name,
+                        ClassName = controllerName,
+                        MethodName = method.Name,
                         RequiresAuthorization = requiresAuth,
                         AllowAnonymous = allowAnon,
                         Roles = allRoles.Distinct().ToList(),
@@ -204,15 +179,12 @@ namespace Spy.Core.Services
             if (type == null || !type.IsClass || type.IsAbstract || !type.IsPublic)
                 return false;
 
-            // Check if it inherits from a known controller base class
             if (InheritsFromController(type))
                 return true;
 
-            // Check for [ApiController] attribute
             if (HasApiControllerAttribute(type))
                 return true;
 
-            // Convention: class name ends with "Controller"
             if (type.Name.EndsWith("Controller", StringComparison.Ordinal) && HasPublicActionMethods(type))
                 return true;
 
@@ -266,33 +238,28 @@ namespace Spy.Core.Services
 
         private static string BuildRoute(string controllerRoute, string actionRoute, string controllerName, string actionName, string area)
         {
-            // If both routes are specified, combine them
             if (!string.IsNullOrEmpty(controllerRoute) && !string.IsNullOrEmpty(actionRoute))
             {
                 var route = CombinePaths(controllerRoute, actionRoute);
                 return ResolveRouteTokens(route, controllerName, actionName, area);
             }
 
-            // If only controller route is specified
             if (!string.IsNullOrEmpty(controllerRoute))
             {
                 return ResolveRouteTokens(controllerRoute, controllerName, actionName, area);
             }
 
-            // If only action route is specified and it starts with /
             if (!string.IsNullOrEmpty(actionRoute) && actionRoute.StartsWith("/", StringComparison.Ordinal))
             {
                 return ResolveRouteTokens(actionRoute, controllerName, actionName, area);
             }
 
-            // If only action route is specified (relative)
             if (!string.IsNullOrEmpty(actionRoute))
             {
                 var route = CombinePaths($"api/{controllerName}", actionRoute);
                 return ResolveRouteTokens(route, controllerName, actionName, area);
             }
 
-            // Convention-based routing fallback
             var conventionalRoute = area != null
                 ? $"{area}/{controllerName}/{actionName}"
                 : $"api/{controllerName}/{actionName}";
@@ -360,7 +327,6 @@ namespace Spy.Core.Services
             var returnType = method.ReturnType;
             if (returnType == typeof(Task)) return true;
             if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>)) return true;
-            // ValueTask support
             if (returnType.Name == "ValueTask" || (returnType.IsGenericType && returnType.Name.StartsWith("ValueTask")))
                 return true;
             return false;
@@ -371,7 +337,7 @@ namespace Spy.Core.Services
             return GetFriendlyTypeName(method.ReturnType);
         }
 
-        private static string GetFriendlyTypeName(Type type)
+        internal static string GetFriendlyTypeName(Type type)
         {
             if (type == typeof(void)) return "void";
             if (type == typeof(string)) return "string";

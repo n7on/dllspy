@@ -1,7 +1,8 @@
-// Sample ASP.NET Core API Controller for testing Spy module
-// This file demonstrates various endpoint patterns that Spy can detect.
+// Sample ASP.NET Core API for testing Spy module
+// This file demonstrates various endpoint patterns that Spy can detect,
+// including HTTP controllers and SignalR hubs.
 //
-// Build with: dotnet new webapi && copy this file into Controllers/
+// Build with: dotnet new webapi && copy this file into the project
 // Or reference the compiled assembly directly with Spy.
 
 using System;
@@ -9,6 +10,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace SampleApi.Controllers
 {
@@ -161,5 +163,66 @@ namespace SampleApi.Controllers
     {
         public string Message { get; set; }
         public int Rating { get; set; }
+    }
+}
+
+namespace SampleApi.Hubs
+{
+    // -------------------------------------------------------------------------
+    // SignalR hub with NO authorization — Spy should flag all methods as High
+    // -------------------------------------------------------------------------
+    public class ChatHub : Hub
+    {
+        /// <summary>
+        /// Send a message to all connected clients.
+        /// Spy should flag: unauthenticated hub method (High severity).
+        /// </summary>
+        public async Task SendMessage(string user, string message)
+        {
+            await Clients.All.SendAsync("ReceiveMessage", user, message);
+        }
+
+        /// <summary>
+        /// Join a specific chat group.
+        /// Spy should flag: unauthenticated hub method (High severity).
+        /// </summary>
+        public async Task JoinGroup(string groupName)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // SignalR hub with authorization
+    // -------------------------------------------------------------------------
+    [Authorize]
+    public class NotificationHub : Hub
+    {
+        /// <summary>
+        /// Subscribe to notifications — inherits hub-level [Authorize].
+        /// Spy should flag: authorize without roles/policies (Low severity).
+        /// </summary>
+        public async Task Subscribe(string channel)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, channel);
+        }
+
+        /// <summary>
+        /// Unsubscribe from notifications.
+        /// </summary>
+        public async Task Unsubscribe(string channel)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, channel);
+        }
+
+        /// <summary>
+        /// Admin-only broadcast — requires Admin role.
+        /// This is properly secured.
+        /// </summary>
+        [Authorize(Roles = "Admin")]
+        public async Task Broadcast(string message)
+        {
+            await Clients.All.SendAsync("Notification", message);
+        }
     }
 }

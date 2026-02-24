@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore
+
+      - name: Verify module loads
+        shell: pwsh
+        run: |
+          Import-Module ./out/Spy -Force
+          $commands = Get-Command -Module Spy
+          if ($commands.Count -lt 2) {
+            throw "Expected at least 2 cmdlets, got $($commands.Count)"
+          }
+          Write-Host "Module loaded successfully with $($commands.Count) cmdlets:"
+          $commands | Format-Table Name, CommandType

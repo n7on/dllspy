@@ -1,0 +1,86 @@
+name: Publish to PowerShell Gallery
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (without v prefix, e.g., 1.0.0)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Get version from tag
+        id: version
+        shell: pwsh
+        run: |
+          if ('${{ github.event.inputs.version }}') {
+            $version = '${{ github.event.inputs.version }}'
+          } else {
+            $version = '${{ github.ref_name }}' -replace '^v', ''
+          }
+          Write-Output "VERSION=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Publishing version: $version"
+
+      - name: Update manifest version
+        shell: pwsh
+        run: |
+          $manifestPath = 'src/Spy.PowerShell/Spy.psd1'
+          $content = Get-Content $manifestPath -Raw
+          $content = $content -replace "ModuleVersion = '[^']*'", "ModuleVersion = '${{ steps.version.outputs.VERSION }}'"
+          Set-Content -Path $manifestPath -Value $content
+          Write-Host "Updated manifest to version ${{ steps.version.outputs.VERSION }}"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore
+
+      - name: Verify module loads
+        shell: pwsh
+        run: |
+          Import-Module ./out/Spy -Force
+          $commands = Get-Command -Module Spy
+          if ($commands.Count -lt 2) {
+            throw "Expected at least 2 cmdlets, got $($commands.Count)"
+          }
+          Write-Host "Module loaded successfully with $($commands.Count) cmdlets"
+
+      - name: Publish to PowerShell Gallery
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: |
+          if (-not $env:PSGALLERY_API_KEY) {
+            throw "PSGALLERY_API_KEY secret is not set"
+          }
+
+          Write-Host "Publishing Spy module to PowerShell Gallery..."
+          Publish-Module -Path "./out/Spy" -NuGetApiKey $env:PSGALLERY_API_KEY -Repository PSGallery -Verbose
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          generate_release_notes: true
+          files: |
+            out/Spy/*.dll
+            out/Spy/*.psd1

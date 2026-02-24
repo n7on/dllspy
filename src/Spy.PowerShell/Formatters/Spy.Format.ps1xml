@@ -2,11 +2,11 @@
 <Configuration>
   <ViewDefinitions>
 
-    <!-- EndpointInfo Table View -->
+    <!-- HttpEndpoint Table View -->
     <View>
-      <Name>Spy.Core.Contracts.EndpointInfo</Name>
+      <Name>Spy.Core.Contracts.HttpEndpoint</Name>
       <ViewSelectedBy>
-        <TypeName>Spy.Core.Contracts.EndpointInfo</TypeName>
+        <TypeName>Spy.Core.Contracts.HttpEndpoint</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -19,7 +19,7 @@
             <Width>40</Width>
           </TableColumnHeader>
           <TableColumnHeader>
-            <Label>Controller</Label>
+            <Label>Class</Label>
             <Width>20</Width>
           </TableColumnHeader>
           <TableColumnHeader>
@@ -41,10 +41,10 @@
                 <PropertyName>Route</PropertyName>
               </TableColumnItem>
               <TableColumnItem>
-                <PropertyName>ControllerName</PropertyName>
+                <PropertyName>ClassName</PropertyName>
               </TableColumnItem>
               <TableColumnItem>
-                <PropertyName>ActionName</PropertyName>
+                <PropertyName>MethodName</PropertyName>
               </TableColumnItem>
               <TableColumnItem>
                 <ScriptBlock>
@@ -59,11 +59,11 @@
       </TableControl>
     </View>
 
-    <!-- EndpointInfo List View -->
+    <!-- HttpEndpoint List View -->
     <View>
-      <Name>Spy.Core.Contracts.EndpointInfo.List</Name>
+      <Name>Spy.Core.Contracts.HttpEndpoint.List</Name>
       <ViewSelectedBy>
-        <TypeName>Spy.Core.Contracts.EndpointInfo</TypeName>
+        <TypeName>Spy.Core.Contracts.HttpEndpoint</TypeName>
       </ViewSelectedBy>
       <ListControl>
         <ListEntries>
@@ -78,12 +78,138 @@
                 <PropertyName>Route</PropertyName>
               </ListItem>
               <ListItem>
-                <Label>Controller</Label>
-                <PropertyName>ControllerName</PropertyName>
+                <Label>Class</Label>
+                <PropertyName>ClassName</PropertyName>
               </ListItem>
               <ListItem>
                 <Label>Action</Label>
-                <PropertyName>ActionName</PropertyName>
+                <PropertyName>MethodName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Requires Auth</Label>
+                <PropertyName>RequiresAuthorization</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Allow Anonymous</Label>
+                <PropertyName>AllowAnonymous</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Roles</Label>
+                <ScriptBlock>($_.Roles -join ', ')</ScriptBlock>
+              </ListItem>
+              <ListItem>
+                <Label>Policies</Label>
+                <ScriptBlock>($_.Policies -join ', ')</ScriptBlock>
+              </ListItem>
+              <ListItem>
+                <Label>Return Type</Label>
+                <PropertyName>ReturnType</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Is Async</Label>
+                <PropertyName>IsAsync</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Parameters</Label>
+                <ScriptBlock>($_.Parameters | ForEach-Object { $_.ToString() }) -join '; '</ScriptBlock>
+              </ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+
+    <!-- SignalRMethod Table View -->
+    <View>
+      <Name>Spy.Core.Contracts.SignalRMethod</Name>
+      <ViewSelectedBy>
+        <TypeName>Spy.Core.Contracts.SignalRMethod</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Hub</Label>
+            <Width>20</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Method</Label>
+            <Width>20</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>HubRoute</Label>
+            <Width>25</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Streaming</Label>
+            <Width>10</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Auth</Label>
+            <Width>6</Width>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>HubName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>MethodName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>HubRoute</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>
+                  if ($_.IsStreamingResult -and $_.AcceptsStreaming) { 'Both' }
+                  elseif ($_.IsStreamingResult) { 'Result' }
+                  elseif ($_.AcceptsStreaming) { 'Input' }
+                  else { 'No' }
+                </ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>
+                  if ($_.RequiresAuthorization) { 'Yes' }
+                  elseif ($_.AllowAnonymous) { 'Anon' }
+                  else { 'No' }
+                </ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <!-- SignalRMethod List View -->
+    <View>
+      <Name>Spy.Core.Contracts.SignalRMethod.List</Name>
+      <ViewSelectedBy>
+        <TypeName>Spy.Core.Contracts.SignalRMethod</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem>
+                <Label>Hub</Label>
+                <PropertyName>HubName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Method</Label>
+                <PropertyName>MethodName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Hub Route</Label>
+                <PropertyName>HubRoute</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Streaming Result</Label>
+                <PropertyName>IsStreamingResult</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Accepts Streaming</Label>
+                <PropertyName>AcceptsStreaming</PropertyName>
               </ListItem>
               <ListItem>
                 <Label>Requires Auth</Label>
@@ -132,11 +258,15 @@
             <Width>10</Width>
           </TableColumnHeader>
           <TableColumnHeader>
+            <Label>Type</Label>
+            <Width>14</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
             <Label>Title</Label>
             <Width>35</Width>
           </TableColumnHeader>
           <TableColumnHeader>
-            <Label>Endpoint</Label>
+            <Label>Surface</Label>
             <Width>35</Width>
           </TableColumnHeader>
           <TableColumnHeader>
@@ -150,10 +280,13 @@
                 <PropertyName>Severity</PropertyName>
               </TableColumnItem>
               <TableColumnItem>
+                <PropertyName>SurfaceType</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
                 <PropertyName>Title</PropertyName>
               </TableColumnItem>
               <TableColumnItem>
-                <ScriptBlock>"$($_.HttpMethod) $($_.EndpointRoute)"</ScriptBlock>
+                <PropertyName>SurfaceRoute</PropertyName>
               </TableColumnItem>
               <TableColumnItem>
                 <PropertyName>Description</PropertyName>
@@ -179,20 +312,24 @@
                 <PropertyName>Severity</PropertyName>
               </ListItem>
               <ListItem>
+                <Label>Surface Type</Label>
+                <PropertyName>SurfaceType</PropertyName>
+              </ListItem>
+              <ListItem>
                 <Label>Title</Label>
                 <PropertyName>Title</PropertyName>
               </ListItem>
               <ListItem>
-                <Label>Endpoint</Label>
-                <ScriptBlock>"$($_.HttpMethod) $($_.EndpointRoute)"</ScriptBlock>
+                <Label>Surface</Label>
+                <PropertyName>SurfaceRoute</PropertyName>
               </ListItem>
               <ListItem>
-                <Label>Controller</Label>
-                <PropertyName>ControllerName</PropertyName>
+                <Label>Class</Label>
+                <PropertyName>ClassName</PropertyName>
               </ListItem>
               <ListItem>
-                <Label>Action</Label>
-                <PropertyName>ActionName</PropertyName>
+                <Label>Method</Label>
+                <PropertyName>MethodName</PropertyName>
               </ListItem>
               <ListItem>
                 <Label>Description</Label>
@@ -201,66 +338,6 @@
               <ListItem>
                 <Label>Recommendation</Label>
                 <PropertyName>Recommendation</PropertyName>
-              </ListItem>
-            </ListItems>
-          </ListEntry>
-        </ListEntries>
-      </ListControl>
-    </View>
-
-    <!-- AssemblyReport List View -->
-    <View>
-      <Name>Spy.Core.Contracts.AssemblyReport</Name>
-      <ViewSelectedBy>
-        <TypeName>Spy.Core.Contracts.AssemblyReport</TypeName>
-      </ViewSelectedBy>
-      <ListControl>
-        <ListEntries>
-          <ListEntry>
-            <ListItems>
-              <ListItem>
-                <Label>Assembly</Label>
-                <PropertyName>AssemblyName</PropertyName>
-              </ListItem>
-              <ListItem>
-                <Label>Path</Label>
-                <PropertyName>AssemblyPath</PropertyName>
-              </ListItem>
-              <ListItem>
-                <Label>Scan Time</Label>
-                <PropertyName>ScanTimestamp</PropertyName>
-              </ListItem>
-              <ListItem>
-                <Label>Total Endpoints</Label>
-                <PropertyName>TotalEndpoints</PropertyName>
-              </ListItem>
-              <ListItem>
-                <Label>Total Controllers</Label>
-                <PropertyName>TotalControllers</PropertyName>
-              </ListItem>
-              <ListItem>
-                <Label>Authenticated</Label>
-                <PropertyName>AuthenticatedEndpoints</PropertyName>
-              </ListItem>
-              <ListItem>
-                <Label>Anonymous</Label>
-                <PropertyName>AnonymousEndpoints</PropertyName>
-              </ListItem>
-              <ListItem>
-                <Label>Security Issues</Label>
-                <PropertyName>TotalSecurityIssues</PropertyName>
-              </ListItem>
-              <ListItem>
-                <Label>High Severity</Label>
-                <PropertyName>HighSeverityIssues</PropertyName>
-              </ListItem>
-              <ListItem>
-                <Label>Medium Severity</Label>
-                <PropertyName>MediumSeverityIssues</PropertyName>
-              </ListItem>
-              <ListItem>
-                <Label>Low Severity</Label>
-                <PropertyName>LowSeverityIssues</PropertyName>
               </ListItem>
             </ListItems>
           </ListEntry>

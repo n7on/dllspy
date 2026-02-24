@@ -6,61 +6,9 @@ using Spy.Core.Contracts;
 namespace Spy.Core.Services
 {
     /// <summary>
-    /// Analyzes security-related attributes on controllers and actions.
-    /// </summary>
-    public interface IAttributeAnalyzer
-    {
-        /// <summary>
-        /// Determines whether the member has an [Authorize] attribute.
-        /// </summary>
-        bool HasAuthorizeAttribute(MemberInfo member);
-
-        /// <summary>
-        /// Determines whether the member has an [AllowAnonymous] attribute.
-        /// </summary>
-        bool HasAllowAnonymousAttribute(MemberInfo member);
-
-        /// <summary>
-        /// Extracts all security attributes from a member.
-        /// </summary>
-        List<SecurityAttribute> GetSecurityAttributes(MemberInfo member);
-
-        /// <summary>
-        /// Extracts roles from [Authorize] attributes on a member.
-        /// </summary>
-        List<string> GetRoles(MemberInfo member);
-
-        /// <summary>
-        /// Extracts policies from [Authorize] attributes on a member.
-        /// </summary>
-        List<string> GetPolicies(MemberInfo member);
-
-        /// <summary>
-        /// Gets the HTTP method from method attributes ([HttpGet], [HttpPost], etc.).
-        /// Returns null if no HTTP method attribute is found.
-        /// </summary>
-        string GetHttpMethod(MethodInfo method);
-
-        /// <summary>
-        /// Gets the route template from [Route], [HttpGet("route")], etc.
-        /// </summary>
-        string GetRouteTemplate(MemberInfo member);
-
-        /// <summary>
-        /// Gets the area name from [Area] attribute, if present.
-        /// </summary>
-        string GetArea(Type controllerType);
-
-        /// <summary>
-        /// Determines the binding source of a parameter.
-        /// </summary>
-        ParameterSource GetParameterSource(System.Reflection.ParameterInfo parameter);
-    }
-
-    /// <summary>
     /// Analyzes security-related attributes on controllers and actions using reflection.
     /// </summary>
-    public class AttributeAnalyzer : IAttributeAnalyzer
+    public class AttributeAnalyzer
     {
         private static readonly Dictionary<string, string> HttpMethodAttributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
