@@ -11,6 +11,10 @@
       <TableControl>
         <TableHeaders>
           <TableColumnHeader>
+            <Label>Type</Label>
+            <Width>8</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
             <Label>Method</Label>
             <Width>8</Width>
           </TableColumnHeader>
@@ -34,6 +38,9 @@
         <TableRowEntries>
           <TableRowEntry>
             <TableColumnItems>
+              <TableColumnItem>
+                <ScriptBlock>'HTTP'</ScriptBlock>
+              </TableColumnItem>
               <TableColumnItem>
                 <PropertyName>HttpMethod</PropertyName>
               </TableColumnItem>
@@ -128,6 +135,10 @@
       <TableControl>
         <TableHeaders>
           <TableColumnHeader>
+            <Label>Type</Label>
+            <Width>8</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
             <Label>Hub</Label>
             <Width>20</Width>
           </TableColumnHeader>
@@ -151,6 +162,9 @@
         <TableRowEntries>
           <TableRowEntry>
             <TableColumnItems>
+              <TableColumnItem>
+                <ScriptBlock>'SignalR'</ScriptBlock>
+              </TableColumnItem>
               <TableColumnItem>
                 <PropertyName>HubName</PropertyName>
               </TableColumnItem>

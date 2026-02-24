@@ -34,23 +34,87 @@ namespace Spy.Core.Services
             if (!File.Exists(fullPath))
                 throw new FileNotFoundException($"Assembly not found: {fullPath}", fullPath);
 
-            Assembly assembly;
+            var assemblyDir = Path.GetDirectoryName(fullPath);
+            var probePaths = GetProbePaths(assemblyDir);
+
+            ResolveEventHandler resolver = (sender, args) => ResolveAssembly(args.Name, probePaths);
+            AppDomain.CurrentDomain.AssemblyResolve += resolver;
+
             try
             {
-                assembly = Assembly.LoadFrom(fullPath);
-            }
-            catch (BadImageFormatException ex)
-            {
-                throw new InvalidOperationException($"The file is not a valid .NET assembly: {fullPath}", ex);
-            }
-            catch (FileLoadException ex)
-            {
-                throw new InvalidOperationException($"Failed to load assembly: {fullPath}", ex);
-            }
+                Assembly assembly;
+                try
+                {
+                    assembly = Assembly.LoadFrom(fullPath);
+                }
+                catch (BadImageFormatException ex)
+                {
+                    throw new InvalidOperationException($"The file is not a valid .NET assembly: {fullPath}", ex);
+                }
+                catch (FileLoadException ex)
+                {
+                    throw new InvalidOperationException($"Failed to load assembly: {fullPath}", ex);
+                }
 
-            var report = ScanAssembly(assembly);
-            report.AssemblyPath = fullPath;
-            return report;
+                var report = ScanAssembly(assembly);
+                report.AssemblyPath = fullPath;
+                return report;
+            }
+            finally
+            {
+                AppDomain.CurrentDomain.AssemblyResolve -= resolver;
+            }
+        }
+
+        private static Assembly ResolveAssembly(string fullName, List<string> probePaths)
+        {
+            var dllName = new AssemblyName(fullName).Name + ".dll";
+            foreach (var dir in probePaths)
+            {
+                var candidate = Path.Combine(dir, dllName);
+                if (File.Exists(candidate))
+                {
+                    try { return Assembly.LoadFrom(candidate); }
+                    catch { /* continue probing */ }
+                }
+            }
+            return null;
+        }
+
+        private static List<string> GetProbePaths(string assemblyDir)
+        {
+            var paths = new List<string> { assemblyDir };
+
+            try
+            {
+                // Locate .NET shared framework directories from the current runtime.
+                // typeof(object).Assembly.Location points to e.g.:
+                //   .../shared/Microsoft.NETCore.App/8.0.x/System.Private.CoreLib.dll
+                // Navigate up to the shared/ folder to discover sibling frameworks
+                // like Microsoft.AspNetCore.App.
+                var coreLib = typeof(object).Assembly.Location;
+                if (!string.IsNullOrEmpty(coreLib))
+                {
+                    var runtimeDir = Path.GetDirectoryName(coreLib);
+                    var frameworkBase = runtimeDir != null ? Path.GetDirectoryName(runtimeDir) : null;
+                    var sharedDir = frameworkBase != null ? Path.GetDirectoryName(frameworkBase) : null;
+
+                    if (sharedDir != null && Directory.Exists(sharedDir))
+                    {
+                        foreach (var framework in Directory.GetDirectories(sharedDir))
+                        {
+                            try
+                            {
+                                paths.AddRange(Directory.GetDirectories(framework));
+                            }
+                            catch { /* skip inaccessible directories */ }
+                        }
+                    }
+                }
+            }
+            catch { /* shared framework discovery is best-effort */ }
+
+            return paths;
         }
 
         /// <inheritdoc />
