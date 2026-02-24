@@ -7,7 +7,7 @@ namespace Spy.Core.Services
     /// <summary>
     /// Discovers input surfaces of a specific type within a .NET assembly.
     /// </summary>
-    public interface IDiscovery
+    internal interface IDiscovery
     {
         /// <summary>Gets the surface type this discovery implementation handles.</summary>
         SurfaceType SurfaceType { get; }

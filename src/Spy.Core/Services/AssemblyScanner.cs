@@ -17,7 +17,7 @@ namespace Spy.Core.Services
         /// <summary>
         /// Initializes a new instance of <see cref="AssemblyScanner"/>.
         /// </summary>
-        public AssemblyScanner(params IDiscovery[] discoveries)
+        internal AssemblyScanner(params IDiscovery[] discoveries)
         {
             if (discoveries == null || discoveries.Length == 0)
                 throw new ArgumentException("At least one discovery implementation is required.", nameof(discoveries));

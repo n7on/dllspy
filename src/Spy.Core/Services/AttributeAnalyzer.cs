@@ -8,7 +8,7 @@ namespace Spy.Core.Services
     /// <summary>
     /// Analyzes security-related attributes on controllers and actions using reflection.
     /// </summary>
-    public class AttributeAnalyzer
+    internal class AttributeAnalyzer
     {
         private static readonly Dictionary<string, string> HttpMethodAttributes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {

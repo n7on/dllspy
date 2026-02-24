@@ -2,17 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Threading.Tasks;
 using Spy.Core.Contracts;
+using Spy.Core.Helpers;
 
 namespace Spy.Core.Services
 {
     /// <summary>
     /// Discovers HTTP endpoints by scanning for ASP.NET Core / Web API controllers.
     /// </summary>
-    public class HttpEndpointDiscovery : IDiscovery
+    internal class HttpEndpointDiscovery : IDiscovery
     {
         private readonly AttributeAnalyzer _attributeAnalyzer;
+        private readonly SecurityResolver _security;
 
         /// <summary>
         /// Initializes a new instance of <see cref="HttpEndpointDiscovery"/>.
@@ -20,6 +21,7 @@ namespace Spy.Core.Services
         public HttpEndpointDiscovery(AttributeAnalyzer attributeAnalyzer)
         {
             _attributeAnalyzer = attributeAnalyzer ?? throw new ArgumentNullException(nameof(attributeAnalyzer));
+            _security = new SecurityResolver(attributeAnalyzer);
         }
 
         /// <inheritdoc />
@@ -41,21 +43,11 @@ namespace Spy.Core.Services
             return surfaces;
         }
 
-        private List<Type> GetControllerTypes(Assembly assembly)
+        private static List<Type> GetControllerTypes(Assembly assembly)
         {
             var controllers = new List<Type>();
 
-            Type[] types;
-            try
-            {
-                types = assembly.GetTypes();
-            }
-            catch (ReflectionTypeLoadException ex)
-            {
-                types = ex.Types.Where(t => t != null).ToArray();
-            }
-
-            foreach (var type in types)
+            foreach (var type in ReflectionHelper.GetTypesSafe(assembly))
             {
                 if (IsController(type))
                 {
@@ -71,12 +63,8 @@ namespace Spy.Core.Services
             var endpoints = new List<HttpEndpoint>();
             var controllerName = GetControllerName(controllerType);
             var controllerRoute = _attributeAnalyzer.GetRouteTemplate(controllerType);
-            var controllerHasAuth = _attributeAnalyzer.HasAuthorizeAttribute(controllerType);
-            var controllerAllowAnon = _attributeAnalyzer.HasAllowAnonymousAttribute(controllerType);
-            var controllerRoles = _attributeAnalyzer.GetRoles(controllerType);
-            var controllerPolicies = _attributeAnalyzer.GetPolicies(controllerType);
-            var controllerSecurityAttrs = _attributeAnalyzer.GetSecurityAttributes(controllerType);
             var area = _attributeAnalyzer.GetArea(controllerType);
+            var classSec = _security.ReadClass(controllerType);
 
             var methods = controllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
 
@@ -86,11 +74,6 @@ namespace Spy.Core.Services
 
                 var httpMethod = _attributeAnalyzer.GetHttpMethod(method);
                 var actionRoute = _attributeAnalyzer.GetRouteTemplate(method);
-                var actionHasAuth = _attributeAnalyzer.HasAuthorizeAttribute(method);
-                var actionAllowAnon = _attributeAnalyzer.HasAllowAnonymousAttribute(method);
-                var actionRoles = _attributeAnalyzer.GetRoles(method);
-                var actionPolicies = _attributeAnalyzer.GetPolicies(method);
-                var actionSecurityAttrs = _attributeAnalyzer.GetSecurityAttributes(method);
 
                 var httpMethods = new List<string>();
                 if (httpMethod != null)
@@ -106,24 +89,14 @@ namespace Spy.Core.Services
                     httpMethods.Add("GET");
                 }
 
+                var merged = _security.Merge(classSec, method);
+                var parameters = ReflectionHelper.GetParameters(method, _attributeAnalyzer);
+                var returnType = ReflectionHelper.GetFriendlyTypeName(method.ReturnType);
+                var isAsync = ReflectionHelper.IsAsyncMethod(method);
+
                 foreach (var verb in httpMethods)
                 {
                     var combinedRoute = BuildRoute(controllerRoute, actionRoute, controllerName, method.Name, area);
-                    var requiresAuth = actionHasAuth || (controllerHasAuth && !actionAllowAnon);
-                    var allowAnon = actionAllowAnon || (controllerAllowAnon && !actionHasAuth);
-
-                    var allRoles = new List<string>(controllerRoles);
-                    allRoles.AddRange(actionRoles);
-
-                    var allPolicies = new List<string>(controllerPolicies);
-                    allPolicies.AddRange(actionPolicies);
-
-                    var allSecurityAttrs = new List<SecurityAttribute>(controllerSecurityAttrs);
-                    allSecurityAttrs.AddRange(actionSecurityAttrs);
-
-                    var parameters = GetParameters(method);
-                    var returnType = GetFriendlyReturnType(method);
-                    var isAsync = IsAsyncMethod(method);
 
                     endpoints.Add(new HttpEndpoint
                     {
@@ -131,14 +104,14 @@ namespace Spy.Core.Services
                         HttpMethod = verb,
                         ClassName = controllerName,
                         MethodName = method.Name,
-                        RequiresAuthorization = requiresAuth,
-                        AllowAnonymous = allowAnon,
-                        Roles = allRoles.Distinct().ToList(),
-                        Policies = allPolicies.Distinct().ToList(),
+                        RequiresAuthorization = merged.RequiresAuthorization,
+                        AllowAnonymous = merged.AllowAnonymous,
+                        Roles = merged.Roles,
+                        Policies = merged.Policies,
                         Parameters = parameters,
                         ReturnType = returnType,
                         IsAsync = isAsync,
-                        SecurityAttributes = allSecurityAttrs,
+                        SecurityAttributes = merged.SecurityAttributes,
                         RouteDetails = new RouteInfo
                         {
                             ControllerRoute = controllerRoute,
@@ -151,27 +124,6 @@ namespace Spy.Core.Services
             }
 
             return endpoints;
-        }
-
-        private List<EndpointParameterInfo> GetParameters(MethodInfo method)
-        {
-            var parameters = new List<EndpointParameterInfo>();
-
-            foreach (var param in method.GetParameters())
-            {
-                var source = _attributeAnalyzer.GetParameterSource(param);
-                var isRequired = !param.HasDefaultValue && !IsNullableType(param.ParameterType);
-
-                parameters.Add(new EndpointParameterInfo
-                {
-                    Name = param.Name,
-                    Type = GetFriendlyTypeName(param.ParameterType),
-                    IsRequired = isRequired,
-                    Source = source
-                });
-            }
-
-            return parameters;
         }
 
         private static bool IsController(Type type)
@@ -320,62 +272,6 @@ namespace Spy.Core.Services
                 return "PATCH";
 
             return "GET";
-        }
-
-        private static bool IsAsyncMethod(MethodInfo method)
-        {
-            var returnType = method.ReturnType;
-            if (returnType == typeof(Task)) return true;
-            if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(Task<>)) return true;
-            if (returnType.Name == "ValueTask" || (returnType.IsGenericType && returnType.Name.StartsWith("ValueTask")))
-                return true;
-            return false;
-        }
-
-        private static string GetFriendlyReturnType(MethodInfo method)
-        {
-            return GetFriendlyTypeName(method.ReturnType);
-        }
-
-        internal static string GetFriendlyTypeName(Type type)
-        {
-            if (type == typeof(void)) return "void";
-            if (type == typeof(string)) return "string";
-            if (type == typeof(int)) return "int";
-            if (type == typeof(long)) return "long";
-            if (type == typeof(bool)) return "bool";
-            if (type == typeof(double)) return "double";
-            if (type == typeof(decimal)) return "decimal";
-            if (type == typeof(float)) return "float";
-            if (type == typeof(DateTime)) return "DateTime";
-            if (type == typeof(Guid)) return "Guid";
-            if (type == typeof(object)) return "object";
-
-            if (type == typeof(Task)) return "Task";
-            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Task<>))
-            {
-                return $"Task<{GetFriendlyTypeName(type.GetGenericArguments()[0])}>";
-            }
-
-            if (type.IsGenericType)
-            {
-                var baseName = type.Name.Substring(0, type.Name.IndexOf('`'));
-                var args = string.Join(", ", type.GetGenericArguments().Select(GetFriendlyTypeName));
-                return $"{baseName}<{args}>";
-            }
-
-            if (type.IsArray)
-            {
-                return $"{GetFriendlyTypeName(type.GetElementType())}[]";
-            }
-
-            return type.Name;
-        }
-
-        private static bool IsNullableType(Type type)
-        {
-            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)
-                || !type.IsValueType;
         }
     }
 }

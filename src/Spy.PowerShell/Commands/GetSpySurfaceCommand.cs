@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Management.Automation;
 using Spy.Core.Contracts;
@@ -19,7 +17,7 @@ namespace Spy.PowerShell.Commands
     /// </example>
     [Cmdlet(VerbsCommon.Get, "SpySurface")]
     [OutputType(typeof(InputSurface))]
-    public class GetSpySurfaceCommand : PSCmdlet
+    public class GetSpySurfaceCommand : SpyCmdletBase
     {
         /// <summary>
         /// Gets or sets the path to the .NET assembly. Supports wildcards.
@@ -135,35 +133,6 @@ namespace Spy.PowerShell.Commands
             }
 
             WriteVerbose($"Found {report.TotalSurfaces} surfaces in {assemblyPath}");
-        }
-
-        private List<string> ResolvePaths(string inputPath)
-        {
-            var resolved = new List<string>();
-
-            try
-            {
-                var providerPaths = GetResolvedProviderPathFromPSPath(inputPath, out var provider);
-                resolved.AddRange(providerPaths);
-            }
-            catch (ItemNotFoundException)
-            {
-                var literalPath = GetUnresolvedProviderPathFromPSPath(inputPath);
-                if (File.Exists(literalPath))
-                {
-                    resolved.Add(literalPath);
-                }
-                else
-                {
-                    WriteError(new ErrorRecord(
-                        new FileNotFoundException($"Assembly not found: {inputPath}"),
-                        "AssemblyNotFound",
-                        ErrorCategory.ObjectNotFound,
-                        inputPath));
-                }
-            }
-
-            return resolved;
         }
     }
 }
