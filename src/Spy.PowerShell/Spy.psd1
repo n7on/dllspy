@@ -4,7 +4,7 @@
     RootModule = 'Spy.PowerShell.dll'
 
     # Version number of this module.
-    ModuleVersion = '1.0.0'
+    ModuleVersion = '0.1.0'
 
     # ID used to uniquely identify this module
     GUID = 'f7e8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b'
@@ -64,7 +64,7 @@
             ProjectUri = ''
 
             # Release notes for this module
-            ReleaseNotes = 'Added multi-surface discovery: HTTP endpoints and SignalR hub methods. Renamed Get-SpyEndpoint to Get-SpySurface.'
+            ReleaseNotes = 'Initial release with multi-surface discovery: HTTP endpoints and SignalR hub methods.'
         }
     }
 

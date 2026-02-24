@@ -1,6 +1,6 @@
 ## [Unreleased]
 
-## [1.0.0] - 2026-02-24
+## [0.1.0] - 2026-02-24
 
 ### Added
 - **Multi-surface discovery architecture** — pluggable `IDiscovery` interface for discovering different input surface types

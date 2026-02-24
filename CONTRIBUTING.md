@@ -64,7 +64,7 @@ To add a new surface type (e.g. gRPC, minimal APIs):
 
 1. Update version in `src/Spy.PowerShell/Spy.psd1`:
    ```powershell
-   ModuleVersion = '1.1.0'
+   ModuleVersion = '0.2.0'
    ```
 
 2. Update release notes in `src/Spy.PowerShell/Spy.psd1`
@@ -75,8 +75,8 @@ To add a new surface type (e.g. gRPC, minimal APIs):
 
 5. Create and push a git tag:
    ```bash
-   git tag v1.1.0
-   git push origin v1.1.0
+   git tag v0.2.0
+   git push origin v0.2.0
    ```
 
 GitHub Actions will automatically publish to PowerShell Gallery when a tag is pushed.
