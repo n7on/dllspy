@@ -69,7 +69,7 @@ jobs:
           Write-Host "Module loaded successfully with $($commands.Count) cmdlets"
 
       - name: Pack CLI tool
-        run: dotnet pack src/DllSpy.Cli/DllSpy.Cli.csproj -c Release --no-build -o ./nupkg
+        run: dotnet pack src/DllSpy.Cli/DllSpy.Cli.csproj -c Release -o ./nupkg
 
       - name: NuGet login
         uses: NuGet/login@v1
