@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>DllSpy.Cli</RootNamespace>
+    <AssemblyName>dllspy</AssemblyName>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>dllspy</ToolCommandName>
+    <PackageId>DllSpy</PackageId>
+    <Authors>Anton Lindström</Authors>
+    <Description>CLI tool that discovers input surfaces and security vulnerabilities in compiled .NET assemblies.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="2.0.3" />
+    <ProjectReference Include="..\DllSpy.Core\DllSpy.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -24,14 +24,14 @@
 - `HttpEndpoint` — extends `InputSurface` with route, HTTP method, and route details
 - `SignalRMethod` — extends `InputSurface` with hub route, hub name, and streaming flags
 - `SignalRDiscovery` service implementing `IDiscovery` for SignalR hubs
-- `-Type` parameter on `Get-SpySurface` and `Find-SpyVulnerability` for filtering by surface type
-- `-Class` parameter on `Get-SpySurface` (replaces `-Controller`) for filtering by class name with wildcards
+- `-Type` parameter on `Search-DllSpy` and `Test-DllSpy` for filtering by surface type
+- `-Class` parameter on `Search-DllSpy` (replaces `-Controller`) for filtering by class name with wildcards
 - SignalR security rules: unauthenticated hub method (High), authorize without roles (Low)
 - Custom formatting views for `SignalRMethod` (table and list)
 - Sample SignalR hubs (`ChatHub`, `NotificationHub`) in `samples/SampleApi.cs`
 
 ### Changed
-- Renamed `Get-SpyEndpoint` to `Get-SpySurface`
+- Renamed `Get-SpyEndpoint` to `Search-DllSpy`
 - Renamed `EndpointDiscovery` to `HttpEndpointDiscovery`, now implements `IDiscovery`
 - `AssemblyScanner` now accepts `params IDiscovery[]` — runs all discoveries and aggregates results
 - `AssemblyReport.Endpoints` replaced by `AssemblyReport.Surfaces` with new computed properties (`TotalSurfaces`, `TotalHttpEndpoints`, `TotalSignalRMethods`, `TotalClasses`)
@@ -40,4 +40,4 @@
 
 ### Removed
 - `EndpointInfo` class (replaced by `HttpEndpoint`)
-- `Get-SpyEndpoint` cmdlet (replaced by `Get-SpySurface`)
+- `Get-SpyEndpoint` cmdlet (replaced by `Search-DllSpy`)

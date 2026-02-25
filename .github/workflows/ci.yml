@@ -31,8 +31,8 @@ jobs:
       - name: Verify module loads
         shell: pwsh
         run: |
-          Import-Module ./out/Spy -Force
-          $commands = Get-Command -Module Spy
+          Import-Module ./out/DllSpy -Force
+          $commands = Get-Command -Module DllSpy
           if ($commands.Count -lt 2) {
             throw "Expected at least 2 cmdlets, got $($commands.Count)"
           }

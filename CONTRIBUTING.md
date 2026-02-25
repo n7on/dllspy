@@ -1,4 +1,4 @@
-# Contributing to Spy
+# Contributing to DllSpy
 
 If you want to contribute to the source you're highly welcome!
 
@@ -28,34 +28,36 @@ dotnet test
 ## Load the Module Locally
 
 ```powershell
-Import-Module ./out/Spy
-Get-SpySurface -Path ./MyApi.dll
+Import-Module ./out/DllSpy
+Search-DllSpy -Path ./MyApi.dll
 ```
 
 ## Project Structure
 
 ```
-spy/
+dllspy/
 ├── src/
-│   ├── Spy.Core/              # Core library (netstandard2.0)
-│   │   ├── Contracts/         # Data models
-│   │   ├── Helpers/           # Reflection utilities
-│   │   └── Services/          # Discovery and analysis logic
-│   └── Spy.PowerShell/        # PowerShell module (netstandard2.0)
-│       ├── Commands/          # Cmdlets
-│       └── Formatters/        # ps1xml formatting
+│   ├── DllSpy.Core/            # Core library (netstandard2.0)
+│   │   ├── Contracts/          # Data models
+│   │   ├── Helpers/            # Reflection utilities
+│   │   └── Services/           # Discovery and analysis logic
+│   ├── DllSpy.PowerShell/      # PowerShell module (netstandard2.0)
+│   │   ├── Commands/           # Cmdlets
+│   │   └── Formatters/         # ps1xml formatting
+│   └── DllSpy.Cli/             # CLI tool (net8.0)
 ├── tests/
-│   └── Spy.Core.Tests/        # xUnit tests
-│       ├── Fixtures/          # Fake ASP.NET types and sample controllers/hubs
-│       ├── Helpers/           # ReflectionHelper tests
-│       └── Services/          # Discovery, scanner, and analyzer tests
-├── docs/                      # Documentation
-└── Spy.sln
+│   └── DllSpy.Core.Tests/      # xUnit tests
+│       ├── Fixtures/            # Fake ASP.NET types and sample controllers/hubs
+│       ├── Helpers/             # ReflectionHelper tests
+│       └── Services/            # Discovery, scanner, and analyzer tests
+├── docs/                        # Documentation
+├── Directory.Build.props        # Shared version for all .NET projects
+└── DllSpy.sln
 ```
 
 ## How It Works
 
-Spy loads .NET assemblies via `System.Reflection` and scans for types that represent input surfaces:
+DllSpy loads .NET assemblies via `System.Reflection` and scans for types that represent input surfaces:
 
 **HTTP Endpoints** — Classes inheriting from `ControllerBase`, `Controller`, or `ApiController`; classes with `[ApiController]`; or classes named `*Controller` with public action methods. Routes are resolved by combining controller-level and action-level templates, with support for `[controller]` and `[action]` tokens.
 
@@ -65,30 +67,35 @@ Spy loads .NET assemblies via `System.Reflection` and scans for types that repre
 
 To add a new surface type (e.g. gRPC, minimal APIs):
 
-1. Add the type to `SurfaceType` enum in `src/Spy.Core/Contracts/SurfaceType.cs`
-2. Create a new class extending `InputSurface` in `src/Spy.Core/Contracts/`
-3. Create a new `IDiscovery` implementation in `src/Spy.Core/Services/`
+1. Add the type to `SurfaceType` enum in `src/DllSpy.Core/Contracts/SurfaceType.cs`
+2. Create a new class extending `InputSurface` in `src/DllSpy.Core/Contracts/`
+3. Create a new `IDiscovery` implementation in `src/DllSpy.Core/Services/`
 4. Add security analysis rules in `AssemblyScanner.AnalyzeSecurityIssues`
 5. Wire it up in `ScannerFactory.Create()`
-6. Add formatting views in `Spy.Format.ps1xml`
+6. Add formatting views in `DllSpy.Format.ps1xml`
 
 ## Releasing a New Version
 
-1. Update version in `src/Spy.PowerShell/Spy.psd1`:
-   ```powershell
-   ModuleVersion = '0.2.0'
+1. Update version in `Directory.Build.props` (shared by all .NET projects):
+   ```xml
+   <Version>0.3.0</Version>
    ```
 
-2. Update release notes in `src/Spy.PowerShell/Spy.psd1`
+2. Update version in `src/DllSpy.PowerShell/DllSpy.psd1` (can't inherit from MSBuild):
+   ```powershell
+   ModuleVersion = '0.3.0'
+   ```
 
-3. Update `CHANGELOG.md`
+3. Update release notes in `src/DllSpy.PowerShell/DllSpy.psd1`
 
-4. Commit and push the changes
+4. Update `CHANGELOG.md`
 
-5. Create and push a git tag:
+5. Commit and push the changes
+
+6. Create and push a git tag:
    ```bash
    git tag v0.2.0
    git push origin v0.2.0
    ```
 
-GitHub Actions will automatically publish to PowerShell Gallery when a tag is pushed.
+GitHub Actions will automatically publish to NuGet and PowerShell Gallery when a tag is pushed.

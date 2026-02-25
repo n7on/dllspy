@@ -1,15 +1,15 @@
-# Spy Examples
+# DllSpy Examples
 
-Real-world scenarios for using Spy to audit .NET API assemblies.
+Real-world scenarios for using DllSpy to audit .NET API assemblies.
 
 ## CI/CD Security Gate
 
 Fail the build if any high-severity issues are found:
 
 ```powershell
-Import-Module ./module/Spy
+Import-Module ./module/DllSpy
 
-$issues = Find-SpyVulnerability -Path .\MyApi.dll -MinimumSeverity High
+$issues = Test-DllSpy -Path .\MyApi.dll -MinimumSeverity High
 
 if ($issues) {
     Write-Error "Found $($issues.Count) high-severity security issue(s):"
@@ -25,14 +25,14 @@ Write-Host "No high-severity issues found." -ForegroundColor Green
 Scan every DLL in a build output folder:
 
 ```powershell
-Import-Module ./module/Spy
+Import-Module ./module/DllSpy
 
 $outputDir = "C:\Projects\MySolution\src\*\bin\Release\net8.0"
 
 Get-ChildItem -Path $outputDir -Filter *.dll -Recurse |
     ForEach-Object {
         try {
-            $surfaces = Get-SpySurface -Path $_.FullName -ErrorAction SilentlyContinue
+            $surfaces = Search-DllSpy -Path $_.FullName -ErrorAction SilentlyContinue
             if ($surfaces) {
                 Write-Host "`n--- $($_.Name) ---" -ForegroundColor Cyan
                 $surfaces | Format-Table
@@ -49,11 +49,11 @@ Save surface snapshots and compare:
 
 ```powershell
 # Capture baseline
-$baseline = Get-SpySurface -Path .\v1\MyApi.dll |
+$baseline = Search-DllSpy -Path .\v1\MyApi.dll |
     Select-Object SurfaceType, DisplayRoute, RequiresAuthorization
 
 # Capture current
-$current = Get-SpySurface -Path .\v2\MyApi.dll |
+$current = Search-DllSpy -Path .\v2\MyApi.dll |
     Select-Object SurfaceType, DisplayRoute, RequiresAuthorization
 
 # Find new surfaces
@@ -87,9 +87,9 @@ if ($authRemoved) {
 Create a quick API reference from the discovered surfaces:
 
 ```powershell
-Import-Module ./module/Spy
+Import-Module ./module/DllSpy
 
-$surfaces = Get-SpySurface -Path .\MyApi.dll
+$surfaces = Search-DllSpy -Path .\MyApi.dll
 
 $grouped = $surfaces | Group-Object ClassName
 
@@ -113,7 +113,7 @@ foreach ($group in $grouped) {
 Quickly find the most dangerous pattern — delete operations without auth:
 
 ```powershell
-Get-SpySurface -Path .\MyApi.dll -HttpMethod DELETE |
+Search-DllSpy -Path .\MyApi.dll -HttpMethod DELETE |
     Where-Object { -not $_.RequiresAuthorization } |
     Format-List Route, ClassName, MethodName, Roles, Policies
 ```
@@ -123,7 +123,7 @@ Get-SpySurface -Path .\MyApi.dll -HttpMethod DELETE |
 Find all unauthenticated SignalR hub methods:
 
 ```powershell
-Get-SpySurface -Path .\MyApi.dll -Type SignalRMethod |
+Search-DllSpy -Path .\MyApi.dll -Type SignalRMethod |
     Where-Object { -not $_.RequiresAuthorization } |
     Format-Table HubName, MethodName, HubRoute
 ```
@@ -133,7 +133,7 @@ Get-SpySurface -Path .\MyApi.dll -Type SignalRMethod |
 Get full details on a specific HTTP endpoint:
 
 ```powershell
-Get-SpySurface -Path .\MyApi.dll -Class Users -HttpMethod POST | Format-List
+Search-DllSpy -Path .\MyApi.dll -Class Users -HttpMethod POST | Format-List
 
 # Output:
 # HTTP Method    : POST
@@ -152,7 +152,7 @@ Get-SpySurface -Path .\MyApi.dll -Class Users -HttpMethod POST | Format-List
 Get full details on a SignalR hub method:
 
 ```powershell
-Get-SpySurface -Path .\MyApi.dll -Type SignalRMethod -Class ChatHub | Format-List
+Search-DllSpy -Path .\MyApi.dll -Type SignalRMethod -Class ChatHub | Format-List
 
 # Output:
 # Hub              : ChatHub

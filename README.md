@@ -1,54 +1,83 @@
-# Spy
+# DllSpy
 
-[![CI](https://github.com/n7on/spy/actions/workflows/ci.yml/badge.svg)](https://github.com/n7on/spy/actions/workflows/ci.yml) [![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/Spy)](https://www.powershellgallery.com/packages/Spy) [![PowerShell Gallery Downloads](https://img.shields.io/powershellgallery/dt/Spy)](https://www.powershellgallery.com/packages/Spy) [![License](https://img.shields.io/github/license/n7on/spy)](https://github.com/n7on/spy/blob/main/LICENSE) [![Platform](https://img.shields.io/badge/platform-Windows-blue)]()
+[![CI](https://github.com/n7on/spy/actions/workflows/ci.yml/badge.svg)](https://github.com/n7on/spy/actions/workflows/ci.yml) [![NuGet Version](https://img.shields.io/nuget/v/DllSpy)](https://www.nuget.org/packages/DllSpy) [![PowerShell Gallery Version](https://img.shields.io/powershellgallery/v/DllSpy)](https://www.powershellgallery.com/packages/DllSpy) [![License](https://img.shields.io/github/license/n7on/spy)](https://github.com/n7on/spy/blob/main/LICENSE)
 
-A PowerShell module that scans compiled .NET assemblies to discover input surfaces (HTTP endpoints, SignalR hubs, WCF services, gRPC services), check authorization configuration, and flag security issues — all without running the application.
+Scans compiled .NET assemblies to discover input surfaces (HTTP endpoints, SignalR hubs, WCF services, gRPC services), check authorization configuration, and flag security issues — all without running the application.
+
+Available as a **CLI tool** and a **PowerShell module**.
 
 ## Installation
 
+### CLI
+
+```bash
+dotnet tool install -g DllSpy
+```
+
+### PowerShell
+
 ```powershell
-Install-Module -Name Spy
+Install-Module -Name DllSpy
 ```
 
 ## Usage
 
-### Discover input surfaces
+### CLI
+
+```bash
+# List all surfaces
+spy ./MyApi.dll
+
+# Scan for security vulnerabilities
+spy ./MyApi.dll -s
+
+# Filter by surface type
+spy ./MyApi.dll -t HttpEndpoint
+
+# Filter by HTTP method and class name
+spy ./MyApi.dll -m DELETE -c User*
+
+# Only authenticated / anonymous surfaces
+spy ./MyApi.dll --auth
+spy ./MyApi.dll --anon
+
+# Scan with minimum severity
+spy ./MyApi.dll -s --min-severity High
+
+# JSON output
+spy ./MyApi.dll --json
+```
+
+### PowerShell
 
 ```powershell
 # All surfaces
-Get-SpySurface -Path .\MyApi.dll
+Search-DllSpy -Path .\MyApi.dll
 
 # Filter by surface type
-Get-SpySurface -Path .\MyApi.dll -Type HttpEndpoint
-Get-SpySurface -Path .\MyApi.dll -Type SignalRMethod
-Get-SpySurface -Path .\MyApi.dll -Type WcfOperation
-Get-SpySurface -Path .\MyApi.dll -Type GrpcOperation
+Search-DllSpy -Path .\MyApi.dll -Type HttpEndpoint
+Search-DllSpy -Path .\MyApi.dll -Type SignalRMethod
+Search-DllSpy -Path .\MyApi.dll -Type WcfOperation
+Search-DllSpy -Path .\MyApi.dll -Type GrpcOperation
 
 # Filter by HTTP method
-Get-SpySurface -Path .\MyApi.dll -HttpMethod DELETE
+Search-DllSpy -Path .\MyApi.dll -HttpMethod DELETE
 
 # Filter by class name (supports wildcards)
-Get-SpySurface -Path .\MyApi.dll -Class User*
+Search-DllSpy -Path .\MyApi.dll -Class User*
 
 # Only authenticated / anonymous surfaces
-Get-SpySurface -Path .\MyApi.dll -RequiresAuth
-Get-SpySurface -Path .\MyApi.dll -AllowAnonymous
-```
+Search-DllSpy -Path .\MyApi.dll -RequiresAuth
+Search-DllSpy -Path .\MyApi.dll -AllowAnonymous
 
-### Find security issues
-
-```powershell
-# All issues
-Find-SpyVulnerability -Path .\MyApi.dll
+# Find security issues
+Test-DllSpy -Path .\MyApi.dll
 
 # Only high-severity issues
-Find-SpyVulnerability -Path .\MyApi.dll -MinimumSeverity High
-
-# Filter by surface type
-Find-SpyVulnerability -Path .\MyApi.dll -Type WcfOperation
+Test-DllSpy -Path .\MyApi.dll -MinimumSeverity High
 
 # Detailed view
-Find-SpyVulnerability -Path .\MyApi.dll | Format-List
+Test-DllSpy -Path .\MyApi.dll | Format-List
 ```
 
 ## Supported Frameworks

@@ -1,0 +1,364 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using DllSpy.Core.Contracts;
+
+namespace DllSpy.Core.Services
+{
+    /// <summary>
+    /// Orchestrates assembly scanning, surface discovery, and security analysis.
+    /// </summary>
+    public class AssemblyScanner
+    {
+        private readonly IDiscovery[] _discoveries;
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="AssemblyScanner"/>.
+        /// </summary>
+        internal AssemblyScanner(params IDiscovery[] discoveries)
+        {
+            if (discoveries == null || discoveries.Length == 0)
+                throw new ArgumentException("At least one discovery implementation is required.", nameof(discoveries));
+            _discoveries = discoveries;
+        }
+
+        /// <inheritdoc />
+        public AssemblyReport ScanAssembly(string assemblyPath)
+        {
+            if (string.IsNullOrWhiteSpace(assemblyPath))
+                throw new ArgumentException("Assembly path cannot be null or empty.", nameof(assemblyPath));
+
+            var fullPath = Path.GetFullPath(assemblyPath);
+            if (!File.Exists(fullPath))
+                throw new FileNotFoundException($"Assembly not found: {fullPath}", fullPath);
+
+            var assemblyDir = Path.GetDirectoryName(fullPath);
+            var probePaths = GetProbePaths(assemblyDir);
+
+            ResolveEventHandler resolver = (sender, args) => ResolveAssembly(args.Name, probePaths);
+            AppDomain.CurrentDomain.AssemblyResolve += resolver;
+
+            try
+            {
+                Assembly assembly;
+                try
+                {
+                    assembly = Assembly.LoadFrom(fullPath);
+                }
+                catch (BadImageFormatException ex)
+                {
+                    throw new InvalidOperationException($"The file is not a valid .NET assembly: {fullPath}", ex);
+                }
+                catch (FileLoadException ex)
+                {
+                    throw new InvalidOperationException($"Failed to load assembly: {fullPath}", ex);
+                }
+
+                var report = ScanAssembly(assembly);
+                report.AssemblyPath = fullPath;
+                return report;
+            }
+            finally
+            {
+                AppDomain.CurrentDomain.AssemblyResolve -= resolver;
+            }
+        }
+
+        private static Assembly ResolveAssembly(string fullName, List<string> probePaths)
+        {
+            var dllName = new AssemblyName(fullName).Name + ".dll";
+            foreach (var dir in probePaths)
+            {
+                var candidate = Path.Combine(dir, dllName);
+                if (File.Exists(candidate))
+                {
+                    try { return Assembly.LoadFrom(candidate); }
+                    catch { /* continue probing */ }
+                }
+            }
+            return null;
+        }
+
+        private static List<string> GetProbePaths(string assemblyDir)
+        {
+            var paths = new List<string> { assemblyDir };
+
+            try
+            {
+                // Locate .NET shared framework directories from the current runtime.
+                // typeof(object).Assembly.Location points to e.g.:
+                //   .../shared/Microsoft.NETCore.App/8.0.x/System.Private.CoreLib.dll
+                // Navigate up to the shared/ folder to discover sibling frameworks
+                // like Microsoft.AspNetCore.App.
+                var coreLib = typeof(object).Assembly.Location;
+                if (!string.IsNullOrEmpty(coreLib))
+                {
+                    var runtimeDir = Path.GetDirectoryName(coreLib);
+                    var frameworkBase = runtimeDir != null ? Path.GetDirectoryName(runtimeDir) : null;
+                    var sharedDir = frameworkBase != null ? Path.GetDirectoryName(frameworkBase) : null;
+
+                    if (sharedDir != null && Directory.Exists(sharedDir))
+                    {
+                        foreach (var framework in Directory.GetDirectories(sharedDir))
+                        {
+                            try
+                            {
+                                paths.AddRange(Directory.GetDirectories(framework));
+                            }
+                            catch { /* skip inaccessible directories */ }
+                        }
+                    }
+                }
+            }
+            catch { /* shared framework discovery is best-effort */ }
+
+            return paths;
+        }
+
+        /// <inheritdoc />
+        public AssemblyReport ScanAssembly(Assembly assembly)
+        {
+            if (assembly == null) throw new ArgumentNullException(nameof(assembly));
+
+            var surfaces = new List<InputSurface>();
+            foreach (var discovery in _discoveries)
+            {
+                surfaces.AddRange(discovery.Discover(assembly));
+            }
+
+            var securityIssues = AnalyzeSecurityIssues(surfaces);
+
+            return new AssemblyReport
+            {
+                AssemblyPath = assembly.Location,
+                AssemblyName = assembly.GetName().Name,
+                ScanTimestamp = DateTime.UtcNow,
+                Surfaces = surfaces,
+                SecurityIssues = securityIssues
+            };
+        }
+
+        /// <summary>
+        /// Analyzes all input surfaces for security issues.
+        /// </summary>
+        public List<SecurityIssue> AnalyzeSecurityIssues(List<InputSurface> surfaces)
+        {
+            if (surfaces == null) throw new ArgumentNullException(nameof(surfaces));
+
+            var issues = new List<SecurityIssue>();
+
+            foreach (var surface in surfaces)
+            {
+                switch (surface)
+                {
+                    case HttpEndpoint http:
+                        issues.AddRange(AnalyzeHttpEndpoint(http));
+                        break;
+                    case SignalRMethod signalr:
+                        issues.AddRange(AnalyzeSignalRMethod(signalr));
+                        break;
+                    case WcfOperation wcf:
+                        issues.AddRange(AnalyzeWcfOperation(wcf));
+                        break;
+                    case GrpcOperation grpc:
+                        issues.AddRange(AnalyzeGrpcOperation(grpc));
+                        break;
+                }
+            }
+
+            return issues;
+        }
+
+        private static List<SecurityIssue> AnalyzeHttpEndpoint(HttpEndpoint endpoint)
+        {
+            var issues = new List<SecurityIssue>();
+
+            // HIGH: State-changing endpoints (DELETE, POST, PUT, PATCH) without [Authorize]
+            if (IsStateChangingMethod(endpoint.HttpMethod) && !endpoint.RequiresAuthorization && !endpoint.AllowAnonymous)
+            {
+                issues.Add(new SecurityIssue
+                {
+                    Title = $"Unauthenticated {endpoint.HttpMethod} endpoint",
+                    Description = $"The {endpoint.HttpMethod} endpoint '{endpoint.Route}' on {endpoint.ClassName}.{endpoint.MethodName} " +
+                                  $"does not require authentication. State-changing operations should be protected.",
+                    Severity = SecuritySeverity.High,
+                    SurfaceRoute = endpoint.DisplayRoute,
+                    SurfaceType = SurfaceType.HttpEndpoint,
+                    ClassName = endpoint.ClassName,
+                    MethodName = endpoint.MethodName,
+                    Recommendation = $"Add [Authorize] attribute to the {endpoint.MethodName} action or the {endpoint.ClassName}Controller class."
+                });
+            }
+
+            // MEDIUM: Endpoints without [Authorize] or [AllowAnonymous] (unclear intent)
+            if (!endpoint.RequiresAuthorization && !endpoint.AllowAnonymous && !IsStateChangingMethod(endpoint.HttpMethod))
+            {
+                issues.Add(new SecurityIssue
+                {
+                    Title = "Missing authorization declaration",
+                    Description = $"The endpoint '{endpoint.Route}' on {endpoint.ClassName}.{endpoint.MethodName} " +
+                                  $"has neither [Authorize] nor [AllowAnonymous]. Security intent is unclear.",
+                    Severity = SecuritySeverity.Medium,
+                    SurfaceRoute = endpoint.DisplayRoute,
+                    SurfaceType = SurfaceType.HttpEndpoint,
+                    ClassName = endpoint.ClassName,
+                    MethodName = endpoint.MethodName,
+                    Recommendation = "Add [Authorize] or [AllowAnonymous] to explicitly declare the security intent."
+                });
+            }
+
+            // LOW: [Authorize] without roles or policies (broad access)
+            if (endpoint.RequiresAuthorization && !endpoint.AllowAnonymous &&
+                endpoint.Roles.Count == 0 && endpoint.Policies.Count == 0)
+            {
+                issues.Add(new SecurityIssue
+                {
+                    Title = "Authorize without role or policy restriction",
+                    Description = $"The endpoint '{endpoint.Route}' on {endpoint.ClassName}.{endpoint.MethodName} " +
+                                  $"requires authentication but does not specify roles or policies. Any authenticated user can access it.",
+                    Severity = SecuritySeverity.Low,
+                    SurfaceRoute = endpoint.DisplayRoute,
+                    SurfaceType = SurfaceType.HttpEndpoint,
+                    ClassName = endpoint.ClassName,
+                    MethodName = endpoint.MethodName,
+                    Recommendation = "Consider adding Roles or Policy to the [Authorize] attribute to restrict access."
+                });
+            }
+
+            return issues;
+        }
+
+        private static List<SecurityIssue> AnalyzeSignalRMethod(SignalRMethod method)
+        {
+            var issues = new List<SecurityIssue>();
+
+            // HIGH: Unauthenticated hub method (direct invocation surface)
+            if (!method.RequiresAuthorization && !method.AllowAnonymous)
+            {
+                issues.Add(new SecurityIssue
+                {
+                    Title = "Unauthenticated SignalR hub method",
+                    Description = $"The hub method '{method.HubRoute}/{method.MethodName}' on {method.HubName} " +
+                                  $"does not require authentication. Hub methods are directly invocable by clients.",
+                    Severity = SecuritySeverity.High,
+                    SurfaceRoute = method.DisplayRoute,
+                    SurfaceType = SurfaceType.SignalRMethod,
+                    ClassName = method.ClassName,
+                    MethodName = method.MethodName,
+                    Recommendation = $"Add [Authorize] attribute to the {method.MethodName} method or the {method.HubName} class."
+                });
+            }
+
+            // LOW: [Authorize] without roles or policies
+            if (method.RequiresAuthorization && !method.AllowAnonymous &&
+                method.Roles.Count == 0 && method.Policies.Count == 0)
+            {
+                issues.Add(new SecurityIssue
+                {
+                    Title = "Authorize without role or policy restriction",
+                    Description = $"The hub method '{method.HubRoute}/{method.MethodName}' on {method.HubName} " +
+                                  $"requires authentication but does not specify roles or policies. Any authenticated user can invoke it.",
+                    Severity = SecuritySeverity.Low,
+                    SurfaceRoute = method.DisplayRoute,
+                    SurfaceType = SurfaceType.SignalRMethod,
+                    ClassName = method.ClassName,
+                    MethodName = method.MethodName,
+                    Recommendation = "Consider adding Roles or Policy to the [Authorize] attribute to restrict access."
+                });
+            }
+
+            return issues;
+        }
+
+        private static List<SecurityIssue> AnalyzeWcfOperation(WcfOperation operation)
+        {
+            var issues = new List<SecurityIssue>();
+
+            // HIGH: Unauthenticated WCF operation (direct invocation surface)
+            if (!operation.RequiresAuthorization && !operation.AllowAnonymous)
+            {
+                issues.Add(new SecurityIssue
+                {
+                    Title = "Unauthenticated WCF operation",
+                    Description = $"The WCF operation '{operation.ContractName}/{operation.MethodName}' on {operation.ClassName} " +
+                                  $"does not require authentication. WCF operations are directly invocable by clients.",
+                    Severity = SecuritySeverity.High,
+                    SurfaceRoute = operation.DisplayRoute,
+                    SurfaceType = SurfaceType.WcfOperation,
+                    ClassName = operation.ClassName,
+                    MethodName = operation.MethodName,
+                    Recommendation = $"Add [PrincipalPermission] attribute to the {operation.ClassName} class or its methods."
+                });
+            }
+
+            // LOW: [PrincipalPermission] / [Authorize] without roles or policies
+            if (operation.RequiresAuthorization && !operation.AllowAnonymous &&
+                operation.Roles.Count == 0 && operation.Policies.Count == 0)
+            {
+                issues.Add(new SecurityIssue
+                {
+                    Title = "Authorize without role or policy restriction",
+                    Description = $"The WCF operation '{operation.ContractName}/{operation.MethodName}' on {operation.ClassName} " +
+                                  $"requires authentication but does not specify roles or policies. Any authenticated user can invoke it.",
+                    Severity = SecuritySeverity.Low,
+                    SurfaceRoute = operation.DisplayRoute,
+                    SurfaceType = SurfaceType.WcfOperation,
+                    ClassName = operation.ClassName,
+                    MethodName = operation.MethodName,
+                    Recommendation = "Consider adding Role to the [PrincipalPermission] attribute to restrict access."
+                });
+            }
+
+            return issues;
+        }
+
+        private static List<SecurityIssue> AnalyzeGrpcOperation(GrpcOperation operation)
+        {
+            var issues = new List<SecurityIssue>();
+
+            // HIGH: Unauthenticated gRPC operation (direct invocation surface)
+            if (!operation.RequiresAuthorization && !operation.AllowAnonymous)
+            {
+                issues.Add(new SecurityIssue
+                {
+                    Title = "Unauthenticated gRPC operation",
+                    Description = $"The gRPC operation '{operation.ServiceName}/{operation.MethodName}' on {operation.ClassName} " +
+                                  $"does not require authentication. gRPC operations are directly invocable by clients.",
+                    Severity = SecuritySeverity.High,
+                    SurfaceRoute = operation.DisplayRoute,
+                    SurfaceType = SurfaceType.GrpcOperation,
+                    ClassName = operation.ClassName,
+                    MethodName = operation.MethodName,
+                    Recommendation = $"Add [Authorize] attribute to the {operation.ClassName} class or its methods."
+                });
+            }
+
+            // LOW: [Authorize] without roles or policies
+            if (operation.RequiresAuthorization && !operation.AllowAnonymous &&
+                operation.Roles.Count == 0 && operation.Policies.Count == 0)
+            {
+                issues.Add(new SecurityIssue
+                {
+                    Title = "Authorize without role or policy restriction",
+                    Description = $"The gRPC operation '{operation.ServiceName}/{operation.MethodName}' on {operation.ClassName} " +
+                                  $"requires authentication but does not specify roles or policies. Any authenticated user can invoke it.",
+                    Severity = SecuritySeverity.Low,
+                    SurfaceRoute = operation.DisplayRoute,
+                    SurfaceType = SurfaceType.GrpcOperation,
+                    ClassName = operation.ClassName,
+                    MethodName = operation.MethodName,
+                    Recommendation = "Consider adding Roles or Policy to the [Authorize] attribute to restrict access."
+                });
+            }
+
+            return issues;
+        }
+
+        private static bool IsStateChangingMethod(string httpMethod)
+        {
+            return httpMethod == "POST" || httpMethod == "PUT" || httpMethod == "DELETE" || httpMethod == "PATCH";
+        }
+    }
+}

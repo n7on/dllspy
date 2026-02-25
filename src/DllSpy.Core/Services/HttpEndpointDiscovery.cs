@@ -1,0 +1,277 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using DllSpy.Core.Contracts;
+using DllSpy.Core.Helpers;
+
+namespace DllSpy.Core.Services
+{
+    /// <summary>
+    /// Discovers HTTP endpoints by scanning for ASP.NET Core / Web API controllers.
+    /// </summary>
+    internal class HttpEndpointDiscovery : IDiscovery
+    {
+        private readonly AttributeAnalyzer _attributeAnalyzer;
+        private readonly SecurityResolver _security;
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="HttpEndpointDiscovery"/>.
+        /// </summary>
+        public HttpEndpointDiscovery(AttributeAnalyzer attributeAnalyzer)
+        {
+            _attributeAnalyzer = attributeAnalyzer ?? throw new ArgumentNullException(nameof(attributeAnalyzer));
+            _security = new SecurityResolver(attributeAnalyzer);
+        }
+
+        /// <inheritdoc />
+        public SurfaceType SurfaceType => SurfaceType.HttpEndpoint;
+
+        /// <inheritdoc />
+        public List<InputSurface> Discover(Assembly assembly)
+        {
+            if (assembly == null) throw new ArgumentNullException(nameof(assembly));
+
+            var surfaces = new List<InputSurface>();
+            var controllerTypes = GetControllerTypes(assembly);
+
+            foreach (var controllerType in controllerTypes)
+            {
+                surfaces.AddRange(DiscoverControllerEndpoints(controllerType));
+            }
+
+            return surfaces;
+        }
+
+        private static List<Type> GetControllerTypes(Assembly assembly)
+        {
+            var controllers = new List<Type>();
+
+            foreach (var type in ReflectionHelper.GetTypesSafe(assembly))
+            {
+                if (IsController(type))
+                {
+                    controllers.Add(type);
+                }
+            }
+
+            return controllers;
+        }
+
+        private List<HttpEndpoint> DiscoverControllerEndpoints(Type controllerType)
+        {
+            var endpoints = new List<HttpEndpoint>();
+            var controllerName = GetControllerName(controllerType);
+            var controllerRoute = _attributeAnalyzer.GetRouteTemplate(controllerType);
+            var area = _attributeAnalyzer.GetArea(controllerType);
+            var classSec = _security.ReadClass(controllerType);
+
+            var methods = controllerType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+
+            foreach (var method in methods)
+            {
+                if (method.IsSpecialName) continue;
+
+                var httpMethod = _attributeAnalyzer.GetHttpMethod(method);
+                var actionRoute = _attributeAnalyzer.GetRouteTemplate(method);
+
+                var httpMethods = new List<string>();
+                if (httpMethod != null)
+                {
+                    httpMethods.Add(httpMethod);
+                }
+                else if (HasApiControllerAttribute(controllerType) || actionRoute != null || controllerRoute != null)
+                {
+                    httpMethods.Add(InferHttpMethod(method.Name));
+                }
+                else
+                {
+                    httpMethods.Add("GET");
+                }
+
+                var merged = _security.Merge(classSec, method);
+                var parameters = ReflectionHelper.GetParameters(method, _attributeAnalyzer);
+                var returnType = ReflectionHelper.GetFriendlyTypeName(method.ReturnType);
+                var isAsync = ReflectionHelper.IsAsyncMethod(method);
+
+                foreach (var verb in httpMethods)
+                {
+                    var combinedRoute = BuildRoute(controllerRoute, actionRoute, controllerName, method.Name, area);
+
+                    endpoints.Add(new HttpEndpoint
+                    {
+                        Route = combinedRoute,
+                        HttpMethod = verb,
+                        ClassName = controllerName,
+                        MethodName = method.Name,
+                        RequiresAuthorization = merged.RequiresAuthorization,
+                        AllowAnonymous = merged.AllowAnonymous,
+                        Roles = merged.Roles,
+                        Policies = merged.Policies,
+                        Parameters = parameters,
+                        ReturnType = returnType,
+                        IsAsync = isAsync,
+                        SecurityAttributes = merged.SecurityAttributes,
+                        RouteDetails = new RouteInfo
+                        {
+                            ControllerRoute = controllerRoute,
+                            ActionRoute = actionRoute,
+                            CombinedRoute = combinedRoute,
+                            Area = area
+                        }
+                    });
+                }
+            }
+
+            return endpoints;
+        }
+
+        private static bool IsController(Type type)
+        {
+            if (type == null || !type.IsClass || type.IsAbstract || !type.IsPublic)
+                return false;
+
+            if (InheritsFromController(type))
+                return true;
+
+            if (HasApiControllerAttribute(type))
+                return true;
+
+            if (type.Name.EndsWith("Controller", StringComparison.Ordinal) && HasPublicActionMethods(type))
+                return true;
+
+            return false;
+        }
+
+        private static bool InheritsFromController(Type type)
+        {
+            var current = type.BaseType;
+            while (current != null)
+            {
+                var name = current.Name;
+                if (name == "Controller" || name == "ControllerBase" ||
+                    name == "ApiController" || name == "ODataController")
+                {
+                    return true;
+                }
+                current = current.BaseType;
+            }
+            return false;
+        }
+
+        private static bool HasApiControllerAttribute(Type type)
+        {
+            try
+            {
+                return Attribute.GetCustomAttributes(type, true)
+                    .Any(a => a.GetType().Name == "ApiControllerAttribute");
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool HasPublicActionMethods(Type type)
+        {
+            return type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Any(m => !m.IsSpecialName);
+        }
+
+        private static string GetControllerName(Type controllerType)
+        {
+            var name = controllerType.Name;
+            if (name.EndsWith("Controller", StringComparison.Ordinal))
+            {
+                return name.Substring(0, name.Length - "Controller".Length);
+            }
+            return name;
+        }
+
+        private static string BuildRoute(string controllerRoute, string actionRoute, string controllerName, string actionName, string area)
+        {
+            if (!string.IsNullOrEmpty(controllerRoute) && !string.IsNullOrEmpty(actionRoute))
+            {
+                var route = CombinePaths(controllerRoute, actionRoute);
+                return ResolveRouteTokens(route, controllerName, actionName, area);
+            }
+
+            if (!string.IsNullOrEmpty(controllerRoute))
+            {
+                return ResolveRouteTokens(controllerRoute, controllerName, actionName, area);
+            }
+
+            if (!string.IsNullOrEmpty(actionRoute) && actionRoute.StartsWith("/", StringComparison.Ordinal))
+            {
+                return ResolveRouteTokens(actionRoute, controllerName, actionName, area);
+            }
+
+            if (!string.IsNullOrEmpty(actionRoute))
+            {
+                var route = CombinePaths($"api/{controllerName}", actionRoute);
+                return ResolveRouteTokens(route, controllerName, actionName, area);
+            }
+
+            var conventionalRoute = area != null
+                ? $"{area}/{controllerName}/{actionName}"
+                : $"api/{controllerName}/{actionName}";
+
+            return ResolveRouteTokens(conventionalRoute, controllerName, actionName, area);
+        }
+
+        private static string CombinePaths(string basePath, string relativePath)
+        {
+            basePath = basePath.TrimEnd('/');
+            relativePath = relativePath.TrimStart('/');
+            return $"{basePath}/{relativePath}";
+        }
+
+        private static string ResolveRouteTokens(string route, string controllerName, string actionName, string area)
+        {
+            route = ReplaceIgnoreCase(route, "[controller]", controllerName);
+            route = ReplaceIgnoreCase(route, "[action]", actionName);
+            if (area != null)
+            {
+                route = ReplaceIgnoreCase(route, "[area]", area);
+            }
+            return route.TrimStart('/');
+        }
+
+        private static string ReplaceIgnoreCase(string input, string oldValue, string newValue)
+        {
+            int index = 0;
+            while ((index = input.IndexOf(oldValue, index, StringComparison.OrdinalIgnoreCase)) >= 0)
+            {
+                input = input.Substring(0, index) + newValue + input.Substring(index + oldValue.Length);
+                index += newValue.Length;
+            }
+            return input;
+        }
+
+        private static string InferHttpMethod(string methodName)
+        {
+            if (methodName.StartsWith("Get", StringComparison.OrdinalIgnoreCase) ||
+                methodName.StartsWith("List", StringComparison.OrdinalIgnoreCase) ||
+                methodName.StartsWith("Find", StringComparison.OrdinalIgnoreCase))
+                return "GET";
+
+            if (methodName.StartsWith("Post", StringComparison.OrdinalIgnoreCase) ||
+                methodName.StartsWith("Create", StringComparison.OrdinalIgnoreCase) ||
+                methodName.StartsWith("Add", StringComparison.OrdinalIgnoreCase))
+                return "POST";
+
+            if (methodName.StartsWith("Put", StringComparison.OrdinalIgnoreCase) ||
+                methodName.StartsWith("Update", StringComparison.OrdinalIgnoreCase))
+                return "PUT";
+
+            if (methodName.StartsWith("Delete", StringComparison.OrdinalIgnoreCase) ||
+                methodName.StartsWith("Remove", StringComparison.OrdinalIgnoreCase))
+                return "DELETE";
+
+            if (methodName.StartsWith("Patch", StringComparison.OrdinalIgnoreCase))
+                return "PATCH";
+
+            return "GET";
+        }
+    }
+}
