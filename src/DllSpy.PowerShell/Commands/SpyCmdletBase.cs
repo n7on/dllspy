@@ -5,7 +5,7 @@ using System.Management.Automation;
 namespace DllSpy.PowerShell.Commands
 {
     /// <summary>
-    /// Base class for Spy cmdlets that scan assemblies.
+    /// Base class for DllSpy cmdlets that scan assemblies.
     /// </summary>
     public abstract class SpyCmdletBase : PSCmdlet
     {

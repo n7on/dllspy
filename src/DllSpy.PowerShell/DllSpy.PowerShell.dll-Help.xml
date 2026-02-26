@@ -72,7 +72,7 @@
         </maml:description>
         <command:parameterValue required="true">SurfaceType</command:parameterValue>
         <dev:type>
-          <maml:name>Spy.Core.Contracts.SurfaceType</maml:name>
+          <maml:name>DllSpy.Core.Contracts.SurfaceType</maml:name>
           <maml:uri />
         </dev:type>
       </command:parameter>
@@ -140,7 +140,7 @@
     <command:returnValues>
       <command:returnValue>
         <dev:type>
-          <maml:name>Spy.Core.Contracts.InputSurface</maml:name>
+          <maml:name>DllSpy.Core.Contracts.InputSurface</maml:name>
         </dev:type>
         <maml:description>
           <maml:para>Objects representing discovered input surfaces. HttpEndpoint objects include Route, HttpMethod, ClassName, MethodName, and authorization details. SignalRMethod objects include HubName, HubRoute, MethodName, streaming flags, and authorization details.</maml:para>
@@ -150,7 +150,7 @@
 
     <maml:alertSet>
       <maml:alert>
-        <maml:para>The assembly is loaded via System.Reflection. Dependent assemblies (e.g. ASP.NET Core framework) do not need to be present — Spy reads attributes by name rather than by type identity.</maml:para>
+        <maml:para>The assembly is loaded via System.Reflection. Dependent assemblies (e.g. ASP.NET Core framework) do not need to be present — DllSpy reads attributes by name rather than by type identity.</maml:para>
         <maml:para>SignalR hub routes are conventional (strip "Hub" suffix) since actual MapHub routes are not discoverable via reflection.</maml:para>
       </maml:alert>
     </maml:alertSet>
@@ -200,7 +200,7 @@
         <maml:title>Example 6: Scan multiple assemblies via pipeline</maml:title>
         <dev:code>Get-ChildItem .\bin\Release\net8.0\*.dll | Search-DllSpy</dev:code>
         <dev:remarks>
-          <maml:para>Pipes all DLLs in the output directory to Spy. Assemblies without controllers or hubs produce no output.</maml:para>
+          <maml:para>Pipes all DLLs in the output directory to DllSpy. Assemblies without controllers or hubs produce no output.</maml:para>
         </dev:remarks>
       </command:example>
     </command:examples>
@@ -269,7 +269,7 @@
         </maml:description>
         <command:parameterValue required="true">SecuritySeverity</command:parameterValue>
         <dev:type>
-          <maml:name>Spy.Core.Contracts.SecuritySeverity</maml:name>
+          <maml:name>DllSpy.Core.Contracts.SecuritySeverity</maml:name>
           <maml:uri />
         </dev:type>
         <dev:defaultValue>Info</dev:defaultValue>
@@ -282,7 +282,7 @@
         </maml:description>
         <command:parameterValue required="true">SurfaceType</command:parameterValue>
         <dev:type>
-          <maml:name>Spy.Core.Contracts.SurfaceType</maml:name>
+          <maml:name>DllSpy.Core.Contracts.SurfaceType</maml:name>
           <maml:uri />
         </dev:type>
       </command:parameter>
@@ -302,7 +302,7 @@
     <command:returnValues>
       <command:returnValue>
         <dev:type>
-          <maml:name>Spy.Core.Contracts.SecurityIssue</maml:name>
+          <maml:name>DllSpy.Core.Contracts.SecurityIssue</maml:name>
         </dev:type>
         <maml:description>
           <maml:para>Objects representing security issues found, including Severity, SurfaceType, Title, Description, SurfaceRoute, ClassName, MethodName, and Recommendation.</maml:para>

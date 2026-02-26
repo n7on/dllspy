@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+## [0.2.4] - 2026-02-26
+
+### Changed
+- CLI surface table now shows separate **METHOD** and **ROUTE** columns instead of combined `DisplayRoute`; renamed the C# method name column from METHOD to **ACTION**
+- New column order: `TYPE | METHOD | ROUTE | CLASS | ACTION | AUTH`
+
+### Fixed
+- PowerShell formatter TypeNames used wrong namespace (`Spy.Core.Contracts` instead of `DllSpy.Core.Contracts`), causing `Format-Table` to fall back to raw property dump
+- Remaining `Spy` references in help XML and cmdlet base class comment updated to `DllSpy`
+
+### Added
+- PowerShell formatter views for `RazorPageHandler` (table + list) and `BlazorRoute` (table + list)
+
 ## [0.2.3] - 2026-02-26
 
 ### Added

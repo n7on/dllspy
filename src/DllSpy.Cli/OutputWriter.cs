@@ -80,32 +80,33 @@ namespace DllSpy.Cli
 
         private static void PrintSurfacesTable(List<InputSurface> surfaces)
         {
-            const string typeH = "TYPE", routeH = "ROUTE", classH = "CLASS", methodH = "METHOD", authH = "AUTH";
-            const int gaps = 10; // 4 x 2-char gaps + AUTH column ~4
+            const string typeH = "TYPE", methodH = "METHOD", routeH = "ROUTE", classH = "CLASS", actionH = "ACTION", authH = "AUTH";
+            const int gaps = 12; // 5 x 2-char gaps + AUTH column ~4
             const int authCol = 4;
 
             int tw = Math.Max(typeH.Length, surfaces.Max(s => GetTypeLabel(s).Length));
-            int rw = Math.Max(routeH.Length, surfaces.Max(s => s.DisplayRoute.Length));
+            int mthW = Math.Max(methodH.Length, surfaces.Max(s => GetMethod(s).Length));
+            int rw = Math.Max(routeH.Length, surfaces.Max(s => GetRoute(s).Length));
             int cw = Math.Max(classH.Length, surfaces.Max(s => s.ClassName.Length));
-            int mw = Math.Max(methodH.Length, surfaces.Max(s => s.MethodName.Length));
+            int aw = Math.Max(actionH.Length, surfaces.Max(s => s.MethodName.Length));
 
             int termWidth = GetTerminalWidth();
-            int total = tw + rw + cw + mw + gaps + authCol;
+            int total = tw + mthW + rw + cw + aw + gaps + authCol;
             if (total > termWidth)
             {
-                int budget = termWidth - tw - gaps - authCol; // TYPE and AUTH are short, keep them
-                // Give ROUTE 50% of remaining budget, CLASS 25%, METHOD 25%
+                int budget = termWidth - tw - mthW - gaps - authCol; // TYPE, METHOD and AUTH are short, keep them
+                // Give ROUTE 50% of remaining budget, CLASS 25%, ACTION 25%
                 rw = Math.Max(routeH.Length, budget / 2);
                 cw = Math.Max(classH.Length, budget / 4);
-                mw = Math.Max(methodH.Length, budget - rw - cw);
+                aw = Math.Max(actionH.Length, budget - rw - cw);
             }
 
-            var fmt = $"{{0,-{tw}}}  {{1,-{rw}}}  {{2,-{cw}}}  {{3,-{mw}}}  {{4}}";
+            var fmt = $"{{0,-{tw}}}  {{1,-{mthW}}}  {{2,-{rw}}}  {{3,-{cw}}}  {{4,-{aw}}}  {{5}}";
 
             Console.WriteLine(
-                Colorize(string.Format(fmt, typeH, routeH, classH, methodH, authH), Bold));
+                Colorize(string.Format(fmt, typeH, methodH, routeH, classH, actionH, authH), Bold));
             Console.WriteLine(
-                Colorize(new string('─', tw + rw + cw + mw + gaps + authCol), Dim));
+                Colorize(new string('─', tw + mthW + rw + cw + aw + gaps + authCol), Dim));
 
             foreach (var s in surfaces)
             {
@@ -114,9 +115,10 @@ namespace DllSpy.Cli
                          : "No";
                 Console.WriteLine(fmt,
                     Truncate(GetTypeLabel(s), tw),
-                    Truncate(s.DisplayRoute, rw),
+                    Truncate(GetMethod(s), mthW),
+                    Truncate(GetRoute(s), rw),
                     Truncate(s.ClassName, cw),
-                    Truncate(s.MethodName, mw),
+                    Truncate(s.MethodName, aw),
                     auth);
             }
         }
@@ -125,11 +127,11 @@ namespace DllSpy.Cli
 
         private static void PrintSurfacesTsv(List<InputSurface> surfaces)
         {
-            Console.WriteLine("TYPE\tROUTE\tCLASS\tMETHOD\tAUTH");
+            Console.WriteLine("TYPE\tMETHOD\tROUTE\tCLASS\tACTION\tAUTH");
             foreach (var s in surfaces)
             {
                 var auth = s.RequiresAuthorization ? "Yes" : s.AllowAnonymous ? "Anon" : "No";
-                Console.WriteLine($"{GetTypeLabel(s)}\t{s.DisplayRoute}\t{s.ClassName}\t{s.MethodName}\t{auth}");
+                Console.WriteLine($"{GetTypeLabel(s)}\t{GetMethod(s)}\t{GetRoute(s)}\t{s.ClassName}\t{s.MethodName}\t{auth}");
             }
         }
 
@@ -188,6 +190,26 @@ namespace DllSpy.Cli
             SecuritySeverity.Medium   => Colorize(severity.ToString(), Yellow),
             SecuritySeverity.Low      => Colorize(severity.ToString(), Cyan),
             _                         => severity.ToString()
+        };
+
+        private static string GetMethod(InputSurface surface) => surface switch
+        {
+            HttpEndpoint http => http.HttpMethod,
+            RazorPageHandler razor => razor.HttpMethod,
+            _ => string.Empty
+        };
+
+        private static string GetRoute(InputSurface surface) => surface switch
+        {
+            HttpEndpoint http => http.Route,
+            RazorPageHandler razor => string.IsNullOrEmpty(razor.HandlerName)
+                ? razor.PageRoute
+                : $"{razor.PageRoute}?handler={razor.HandlerName}",
+            SignalRMethod signalr => signalr.HubRoute,
+            WcfOperation wcf => wcf.ContractName,
+            GrpcOperation grpc => grpc.ServiceName,
+            BlazorRoute blazor => blazor.RouteTemplate,
+            _ => string.Empty
         };
 
         private static string GetTypeLabel(InputSurface surface) => surface.SurfaceType switch

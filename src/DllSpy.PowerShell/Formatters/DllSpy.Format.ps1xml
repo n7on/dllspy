@@ -4,9 +4,9 @@
 
     <!-- HttpEndpoint Table View -->
     <View>
-      <Name>Spy.Core.Contracts.HttpEndpoint</Name>
+      <Name>DllSpy.Core.Contracts.HttpEndpoint</Name>
       <ViewSelectedBy>
-        <TypeName>Spy.Core.Contracts.HttpEndpoint</TypeName>
+        <TypeName>DllSpy.Core.Contracts.HttpEndpoint</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -68,9 +68,9 @@
 
     <!-- HttpEndpoint List View -->
     <View>
-      <Name>Spy.Core.Contracts.HttpEndpoint.List</Name>
+      <Name>DllSpy.Core.Contracts.HttpEndpoint.List</Name>
       <ViewSelectedBy>
-        <TypeName>Spy.Core.Contracts.HttpEndpoint</TypeName>
+        <TypeName>DllSpy.Core.Contracts.HttpEndpoint</TypeName>
       </ViewSelectedBy>
       <ListControl>
         <ListEntries>
@@ -128,9 +128,9 @@
 
     <!-- SignalRMethod Table View -->
     <View>
-      <Name>Spy.Core.Contracts.SignalRMethod</Name>
+      <Name>DllSpy.Core.Contracts.SignalRMethod</Name>
       <ViewSelectedBy>
-        <TypeName>Spy.Core.Contracts.SignalRMethod</TypeName>
+        <TypeName>DllSpy.Core.Contracts.SignalRMethod</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -197,9 +197,9 @@
 
     <!-- SignalRMethod List View -->
     <View>
-      <Name>Spy.Core.Contracts.SignalRMethod.List</Name>
+      <Name>DllSpy.Core.Contracts.SignalRMethod.List</Name>
       <ViewSelectedBy>
-        <TypeName>Spy.Core.Contracts.SignalRMethod</TypeName>
+        <TypeName>DllSpy.Core.Contracts.SignalRMethod</TypeName>
       </ViewSelectedBy>
       <ListControl>
         <ListEntries>
@@ -261,9 +261,9 @@
 
     <!-- WcfOperation Table View -->
     <View>
-      <Name>Spy.Core.Contracts.WcfOperation</Name>
+      <Name>DllSpy.Core.Contracts.WcfOperation</Name>
       <ViewSelectedBy>
-        <TypeName>Spy.Core.Contracts.WcfOperation</TypeName>
+        <TypeName>DllSpy.Core.Contracts.WcfOperation</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -327,9 +327,9 @@
 
     <!-- WcfOperation List View -->
     <View>
-      <Name>Spy.Core.Contracts.WcfOperation.List</Name>
+      <Name>DllSpy.Core.Contracts.WcfOperation.List</Name>
       <ViewSelectedBy>
-        <TypeName>Spy.Core.Contracts.WcfOperation</TypeName>
+        <TypeName>DllSpy.Core.Contracts.WcfOperation</TypeName>
       </ViewSelectedBy>
       <ListControl>
         <ListEntries>
@@ -391,9 +391,9 @@
 
     <!-- GrpcOperation Table View -->
     <View>
-      <Name>Spy.Core.Contracts.GrpcOperation</Name>
+      <Name>DllSpy.Core.Contracts.GrpcOperation</Name>
       <ViewSelectedBy>
-        <TypeName>Spy.Core.Contracts.GrpcOperation</TypeName>
+        <TypeName>DllSpy.Core.Contracts.GrpcOperation</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -455,9 +455,9 @@
 
     <!-- GrpcOperation List View -->
     <View>
-      <Name>Spy.Core.Contracts.GrpcOperation.List</Name>
+      <Name>DllSpy.Core.Contracts.GrpcOperation.List</Name>
       <ViewSelectedBy>
-        <TypeName>Spy.Core.Contracts.GrpcOperation</TypeName>
+        <TypeName>DllSpy.Core.Contracts.GrpcOperation</TypeName>
       </ViewSelectedBy>
       <ListControl>
         <ListEntries>
@@ -513,11 +513,251 @@
       </ListControl>
     </View>
 
+    <!-- RazorPageHandler Table View -->
+    <View>
+      <Name>DllSpy.Core.Contracts.RazorPageHandler</Name>
+      <ViewSelectedBy>
+        <TypeName>DllSpy.Core.Contracts.RazorPageHandler</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Type</Label>
+            <Width>8</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Method</Label>
+            <Width>8</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Route</Label>
+            <Width>40</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Class</Label>
+            <Width>20</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Action</Label>
+            <Width>20</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Auth</Label>
+            <Width>6</Width>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <ScriptBlock>'Razor'</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>HttpMethod</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>
+                  if ($_.HandlerName) { "$($_.PageRoute)?handler=$($_.HandlerName)" }
+                  else { $_.PageRoute }
+                </ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ClassName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>MethodName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>
+                  if ($_.RequiresAuthorization) { 'Yes' }
+                  elseif ($_.AllowAnonymous) { 'Anon' }
+                  else { 'No' }
+                </ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <!-- RazorPageHandler List View -->
+    <View>
+      <Name>DllSpy.Core.Contracts.RazorPageHandler.List</Name>
+      <ViewSelectedBy>
+        <TypeName>DllSpy.Core.Contracts.RazorPageHandler</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem>
+                <Label>HTTP Method</Label>
+                <PropertyName>HttpMethod</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Page Route</Label>
+                <PropertyName>PageRoute</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Handler</Label>
+                <PropertyName>HandlerName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Page Model</Label>
+                <PropertyName>PageModelName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Class</Label>
+                <PropertyName>ClassName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Action</Label>
+                <PropertyName>MethodName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Requires Auth</Label>
+                <PropertyName>RequiresAuthorization</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Allow Anonymous</Label>
+                <PropertyName>AllowAnonymous</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Roles</Label>
+                <ScriptBlock>($_.Roles -join ', ')</ScriptBlock>
+              </ListItem>
+              <ListItem>
+                <Label>Policies</Label>
+                <ScriptBlock>($_.Policies -join ', ')</ScriptBlock>
+              </ListItem>
+              <ListItem>
+                <Label>Return Type</Label>
+                <PropertyName>ReturnType</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Is Async</Label>
+                <PropertyName>IsAsync</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Parameters</Label>
+                <ScriptBlock>($_.Parameters | ForEach-Object { $_.ToString() }) -join '; '</ScriptBlock>
+              </ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+
+    <!-- BlazorRoute Table View -->
+    <View>
+      <Name>DllSpy.Core.Contracts.BlazorRoute</Name>
+      <ViewSelectedBy>
+        <TypeName>DllSpy.Core.Contracts.BlazorRoute</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Type</Label>
+            <Width>8</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Route</Label>
+            <Width>40</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Component</Label>
+            <Width>20</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Class</Label>
+            <Width>20</Width>
+          </TableColumnHeader>
+          <TableColumnHeader>
+            <Label>Auth</Label>
+            <Width>6</Width>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <ScriptBlock>'Blazor'</ScriptBlock>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>RouteTemplate</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ComponentName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <PropertyName>ClassName</PropertyName>
+              </TableColumnItem>
+              <TableColumnItem>
+                <ScriptBlock>
+                  if ($_.RequiresAuthorization) { 'Yes' }
+                  elseif ($_.AllowAnonymous) { 'Anon' }
+                  else { 'No' }
+                </ScriptBlock>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+
+    <!-- BlazorRoute List View -->
+    <View>
+      <Name>DllSpy.Core.Contracts.BlazorRoute.List</Name>
+      <ViewSelectedBy>
+        <TypeName>DllSpy.Core.Contracts.BlazorRoute</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem>
+                <Label>Route</Label>
+                <PropertyName>RouteTemplate</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Component</Label>
+                <PropertyName>ComponentName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Class</Label>
+                <PropertyName>ClassName</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Requires Auth</Label>
+                <PropertyName>RequiresAuthorization</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Allow Anonymous</Label>
+                <PropertyName>AllowAnonymous</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>Roles</Label>
+                <ScriptBlock>($_.Roles -join ', ')</ScriptBlock>
+              </ListItem>
+              <ListItem>
+                <Label>Policies</Label>
+                <ScriptBlock>($_.Policies -join ', ')</ScriptBlock>
+              </ListItem>
+              <ListItem>
+                <Label>Return Type</Label>
+                <PropertyName>ReturnType</PropertyName>
+              </ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+
     <!-- SecurityIssue Table View -->
     <View>
-      <Name>Spy.Core.Contracts.SecurityIssue</Name>
+      <Name>DllSpy.Core.Contracts.SecurityIssue</Name>
       <ViewSelectedBy>
-        <TypeName>Spy.Core.Contracts.SecurityIssue</TypeName>
+        <TypeName>DllSpy.Core.Contracts.SecurityIssue</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -567,9 +807,9 @@
 
     <!-- SecurityIssue List View -->
     <View>
-      <Name>Spy.Core.Contracts.SecurityIssue.List</Name>
+      <Name>DllSpy.Core.Contracts.SecurityIssue.List</Name>
       <ViewSelectedBy>
-        <TypeName>Spy.Core.Contracts.SecurityIssue</TypeName>
+        <TypeName>DllSpy.Core.Contracts.SecurityIssue</TypeName>
       </ViewSelectedBy>
       <ListControl>
         <ListEntries>
