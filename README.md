@@ -6,6 +6,8 @@ Scans compiled .NET assemblies to discover input surfaces (HTTP endpoints, Signa
 
 Available as a **CLI tool** and a **PowerShell module**.
 
+<video src="docs/dllspy.mp4" autoplay loop muted playsinline></video>
+
 ## Installation
 
 ### CLI
