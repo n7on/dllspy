@@ -43,6 +43,9 @@ dllspy ./MyApi.dll -m DELETE -c User*
 dllspy ./MyApi.dll --auth
 dllspy ./MyApi.dll --anon
 
+# Only scan host (runnable) assemblies, skip class libraries
+dllspy ./MyApi.dll --host-only
+
 # Scan with minimum severity
 dllspy ./MyApi.dll -s --min-severity High
 
@@ -90,11 +93,17 @@ Search-DllSpy -Path .\MyApi.dll -Class User*
 Search-DllSpy -Path .\MyApi.dll -RequiresAuth
 Search-DllSpy -Path .\MyApi.dll -AllowAnonymous
 
+# Only scan host (runnable) assemblies, skip class libraries
+Search-DllSpy -Path .\bin\*.dll -HostOnly
+
 # Find security issues
 Test-DllSpy -Path .\MyApi.dll
 
 # Only high-severity issues
 Test-DllSpy -Path .\MyApi.dll -MinimumSeverity High
+
+# Only scan host assemblies for security issues
+Test-DllSpy -Path .\bin\*.dll -HostOnly
 
 # Detailed view
 Test-DllSpy -Path .\MyApi.dll | Format-List
